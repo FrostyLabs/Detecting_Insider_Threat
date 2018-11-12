@@ -1,10 +1,8 @@
-# Detecting_Insider_Threat
-This is the repository for my Honours Project
-Supervisor: Petra Leimich 
-Secondary Marker: Rich Macfarlane
+# Detecting Insider Threat
+Honours Project SOC10101 - Edinburgh Napier University 
 
-Information on the program will go in here. 
+Scenario 1: SSH Honeypot analysis
 
-The idea of the project is to be able to detect insider threat activity in a business environment in terms of data theft of employees. 
+Scenario 2: Decoy-file watcher 
 
-Edinburgh Napier University
+Scenario 3: Host Event analysis
