@@ -37,12 +37,24 @@ def json_format(text):
         json.dump(json_dict, fp)
 
 
-
+def login_attempts(text):
+    """login attempts"""
+    json_file = open("formatted_cowrie.json", "r", encoding="utf-8")
+    data = json.load(json_file)
+    json_file.close()
+    # print (json_data)
+    for i in data.values():
+        if 'login' in i['eventid']:
+            if 'success' in i['eventid']:
+                print("***Successful Credentials:", i["username"], '/', i["password"])
+            else:
+                print("Failed attempts", i["username"], '/', i["password"])
 
 
 def main():
     print("Analyzing file:", sys.argv[1])
     json_format(sys.argv[1])
+	login_attempts(sys.argv[1])
 
 
 if __name__ == '__main__':
