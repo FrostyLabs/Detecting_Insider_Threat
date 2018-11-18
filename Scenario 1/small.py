@@ -37,7 +37,7 @@ data ={
 		    "message": "login attempt [george/george] failed",
 		    "sensor": "ubuntu",
 		    "timestamp": "2018-11-11T14:01:24.658923Z",
-		    "src_ip": "192.168.217.131",
+		    "src_ip": "192.168.123.131",
 		    "session": "6fac825b1545"
 		  	},
 	   	"4": {
@@ -47,22 +47,25 @@ data ={
 		    "message": "login attempt [george/hello] failed",
 		    "sensor": "ubuntu",
 		    "timestamp": "2018-11-11T14:01:32.376158Z",
-		    "src_ip": "192.168.217.131",
-		    "session": "6fac825b1545"
+		    "src_ip": "192.168.123.131",
+		    "session": "8fyh7635fh22"
 		  	}
 		}
 
-
+"""
+Grouping by session
+"""
 grouped = {}
 for log in data.values():
 	session_id = log['session']
 	if session_id not in grouped:
 		grouped[session_id] = []
 	grouped[session_id].append(log)
-print (grouped,'\n')
+#print (grouped,'\n')
 
-
-
+"""
+Another Grouping by session method
+"""
 from itertools import groupby
 from operator import itemgetter
 
@@ -73,4 +76,15 @@ groupd = {
         key=itemgetter("session")
     )
 }
-print(groupd, '\n')
+#print(groupd, '\n')
+
+"""
+Grouping by IP
+"""
+grouped_ip = {}
+for log in data.values():
+	ip_addr = log['src_ip']
+	if ip_addr not in grouped_ip:
+		grouped_ip[ip_addr] = []
+	grouped_ip[ip_addr].append(log)
+#print(grouped_ip)
