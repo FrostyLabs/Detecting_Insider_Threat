@@ -87,23 +87,43 @@ def commands(formatted_json):
 
 def group_session_id(formatted_json):
 	"""This function groups the json data by session value"""
-	print('Session_ID Grouping \n')
+	print('--> Starting group by session ID \n')
 
 	json_file = open(formatted_json, "r", encoding="utf-8")
 	data = json.load(json_file)
 	json_file.close()
 
-	grouped = {}
+	grouped_session = {}
 	for log in data.values():
 		session_id = log['session']
-		if session_id not in grouped:
-			grouped[session_id] = []
-		grouped[session_id].append(log)
+		if session_id not in grouped_session:
+			grouped_session[session_id] = []
+		grouped_session[session_id].append(log)
 
+	print('The number of unique sessions:', len(grouped_session),'\n')
 
-# Not yet complete
+def group_ip(formatted_json):
+	"""This function will group by IP address with the aim of being able to count the number of times an IP address has accessed the honeypot"""
+	print('Grouping by source IP address\n')
+
+	json_file = open(formatted_json, 'r', encoding='utf-8')
+	data = json.load(json_file)
+	json_file.close()
+
+	grouped_ip = {}
+	for log in data.values():
+		ip_addr = log['src_ip']
+		if ip_addr not in grouped_ip:
+			grouped_ip[ip_addr] = []
+		grouped_ip[ip_addr].append(log)
+
+	print('Number of unique IP addresses:',len(grouped_ip))
+
+	#What I need from here is to be able to count the uniqie IDs within a session dictionary
+
 
 # def session_activity(text):
+# Not yet complete
 # 	"""Find session activity"""
 # 	print('\n Session Activity \n')
 
@@ -121,6 +141,7 @@ def main(): #run by ./json_script.py cowrie.json
 		group_session_id(sys.argv[2])
 		# Not yet complete
 		#session_activity(sys.argv[2])
+		group_ip(sys.argv[2])
 	else:
 		json_format(sys.argv[1])
 
