@@ -25,10 +25,8 @@ class MyHandler(PatternMatchingEventHandler):
 		# The file will be processed there
 		print event.src_path, event.event_type
 	def on_modified(self, event):
-		#self.process(event)
-		#print('Modified File', event)
-		print('Modified File')
-
+		self.process(event)
+		
 	def on_created(self, event):
 		self.process(event)
 
