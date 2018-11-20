@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 @author Brumo Rocha
 	#http://brunorocha.org/python/watching-a-directory-for-file-changes-with-python.html
@@ -11,7 +12,7 @@ from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
 class MyHandler(PatternMatchingEventHandler):
-	patterns = ["*.xml", "*.lxml", "*.txt"]
+	patterns = ["*.txt", "*.docx"]
 
 	def process(self, event):
 		"""
@@ -22,11 +23,11 @@ class MyHandler(PatternMatchingEventHandler):
         event.src_path
             path/to/observed/file
         """
-		# The file will be processed there
+
 		print event.src_path, event.event_type
 	def on_modified(self, event):
 		self.process(event)
-		
+
 	def on_created(self, event):
 		self.process(event)
 
