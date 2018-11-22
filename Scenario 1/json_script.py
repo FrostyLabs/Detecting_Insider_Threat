@@ -87,7 +87,7 @@ def commands(formatted_json):
 
 def group_session_id(formatted_json):
 	"""This function groups the json data by session value"""
-	print('--> Starting group by session ID \n')
+	print('*** Starting group by session ID \n')
 
 	json_file = open(formatted_json, "r", encoding="utf-8")
 	data = json.load(json_file)
@@ -100,11 +100,12 @@ def group_session_id(formatted_json):
 			grouped_session[session_id] = []
 		grouped_session[session_id].append(log)
 
-	print('The number of unique sessions:', len(grouped_session),'\n')
+	print('- The number of unique sessions:', len(grouped_session),'\n')
 
 def group_ip(formatted_json):
 	"""This function will group by IP address with the aim of being able to count the number of times an IP address has accessed the honeypot"""
-	print('Grouping by source IP address\n')
+
+	print('*** IP Address Analysis\n')
 
 	json_file = open(formatted_json, 'r', encoding='utf-8')
 	data = json.load(json_file)
@@ -117,9 +118,21 @@ def group_ip(formatted_json):
 			grouped_ip[ip_addr] = []
 		grouped_ip[ip_addr].append(log)
 
-	print('Number of unique IP addresses:',len(grouped_ip))
+	print('- Number of unique IP addresses:',len(grouped_ip),'\n')
 
-	#What I need from here is to be able to count the uniqie IDs within a session dictionary
+	counts = {}
+	"""Counts number of sessions per IP address"""
+	for key, value in grouped_ip.items():
+	    counts[key] = 0
+	    unique_session = []
+	    for event in value:
+	        for x,y in event.items():
+	            if x == "session":
+	                if y not in unique_session:
+	                    unique_session.append(y)
+	                    counts[key] += 1
+	    print("- src_ip ({}) had : ({}) sessions".format(key, counts[key]))
+
 
 
 # def session_activity(text):
