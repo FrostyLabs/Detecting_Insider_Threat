@@ -145,6 +145,19 @@ for key, value in d.items():
 			count_unique_session[key] += 1 #Again same problem as above, it is not counting unique values, rather simply counting when there is a session value (even if it is a duplicate it will count)
 
 
+unique_counts = {}
+
+for key, value in d.items(): # key = ip, value = 'eventid': 'login.success', etc
+    unique_counts[key] = 0
+    unique_session = []
+    for event in value: # event is the dictionary of 'eventid':'login.success', etc
+        for x,y in event.items(): # x is eventid, message y is login.success, login attempt
+            if x == "session":
+                if y not in unique_session:
+                    unique_session.append(y) # appends when value not in list
+                    unique_counts[key] += 1
+    print("{} : {}".format(key, unique_counts[key]))
+
 """
 Testing printing with colour
 https://stackoverflow.com/questions/287871/print-in-terminal-with-colors
