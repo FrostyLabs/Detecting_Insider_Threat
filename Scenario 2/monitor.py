@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
 @author Brumo Rocha
 	#http://brunorocha.org/python/watching-a-directory-for-file-changes-with-python.html
@@ -23,19 +23,27 @@ class MyHandler(PatternMatchingEventHandler):
         event.src_path
             path/to/observed/file
         """
+		print (event.src_path, event.event_type)
 
-		print event.src_path, event.event_type
 	def on_modified(self, event):
 		self.process(event)
+		print("Time: ",time.asctime(),'\n')
 
 	def on_created(self, event):
 		self.process(event)
+		print("Time: ",time.asctime(),'\n')
 
 	def on_deleted(self, event):
 		self.process(event)
+		print("Time: ",time.asctime(),'\n')
 
 	def on_moved(self, event):
-		self.process(event)
+		print(self.process(event))
+		print("Time: ",time.asctime(),'\n')
+
+	def on_copied(self, event):
+		print(self.process(event))
+		print("Time: ",time.asctime(),'\n')
 
 if __name__ == '__main__':
 	args = sys.argv[1:]
