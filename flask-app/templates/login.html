@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <h1>Login</h1>
+<!-- Development Account:
+
+Username: admin_developer
+Password: D3vel0pm3nt!
+
+-Remove before production!-->
+  <form action="" method="POST">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" name="username" class="form-control" value={{request.form.username}}>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" name="password" class="form-control" value={{request.form.password}}>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+		<!-- Some Special Content can be found over at localhost:5000/special -->
+  </form>
+{% endblock %}

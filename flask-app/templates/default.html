@@ -1,0 +1,13 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <div class="jumbotron text-center">
+    <h1>Welcome To Flask Application</h1>
+    <p class="lead">This application is built on the Python Flask framework. It is inspired by honeyku, originating from <a href="https://github.com/0x4D31/honeyku" target="_blank">GitHub</a>.	</p>
+    {% if session.logged_in == NULL %}
+      <a href="/register" class="btn btn-primary btn-lg">Register</a>
+      <a href="/login" class="btn btn-success btn-lg">Login</a>
+			<a href="/fake-register" class="btn btn-success btn-lg">HoneyToken</a>
+    {% endif %}
+  </div>
+{% endblock %}
