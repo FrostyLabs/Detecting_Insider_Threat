@@ -43,7 +43,31 @@
 		"2": "johnny",
 		"3": "kerry",
 		"4": "george",
-		"5": "grussel"
+		"5": "g.russel"
+	},
+	"usernames": {
+		"1": "cordelia",
+		"2": "patience",
+		"3": "jolene",
+		"4": "shery",
+		"5": "valentin",
+		"6": "mammie",
+		"7": "alina",
+		"8": "bobbye",
+		"9": "constance",
+		"10": "faith"
+	},
+	"passwords": {
+		"1": "am7Bdq",
+		"2": "F3Yndg",
+		"3": "w4fPND",
+		"4": "6f7BqP",
+		"5": "Abu7WV",
+		"6": "f7Ct9b",
+		"7": "QXq3hF",
+		"8": "6xSfSe",
+		"9": "hEyD99",
+		"10": "Ng5LRC"
 	},
 	"alert": {
 		"slack": {

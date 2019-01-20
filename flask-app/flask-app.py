@@ -35,6 +35,7 @@ from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
+import secrets
 
 
 app = Flask(__name__)
@@ -194,7 +195,7 @@ def register():
 
             return redirect(url_for('login'))
         except:
-            flash('Username already Exists', 'danger')
+            flash('Username Exists ', 'danger')
     return render_template('register.html', form=form)
 
 
@@ -271,12 +272,14 @@ def dashboard():
     result = cur.execute("SELECT * FROM articles WHERE author = %s", [session['username']])
 
     currentUser =  [session['username']]
+
     trapUsers = []
 
 	# TODO: Check that this is working properly without bugs
-    for key, value in config.items():
-        for num, name in value.items():
-            trapUsers.append(name)
+    for key, data in config.items():
+        if key == 'trapUsers':
+            for num, name in data.items():
+                trapUsers.append(name)
 
 
     articles = cur.fetchall()
@@ -555,8 +558,7 @@ def sms_alerter(msg, conf):
 					)
 
 
-	logger.info("--> SMS alert is sent")
-	logger.info("--> "+message.sid+"\n")
+	logger.info("--> SMS alert is sent. Message ID: "+message.sid)
 
 
 def slack_alerter(msg, webhook_url):
@@ -656,7 +658,90 @@ def slack_alerter(msg, webhook_url):
 
 	return
 
+def genToken():
+	"""Generate Honey Token"""
+	config = load_config()
+	TokenUsers = []
+	TokenPassw = []
+
+	for key, data in config.items():
+		if key == 'usernames':
+			for num, name in data.items():
+				if name not in TokenUsers:
+					TokenUsers.append(name)
+		if key == 'passwords':
+			for num, passwd in data.items():
+				if passwd not in TokenPassw:
+					TokenPassw.append(passwd)
+
+
+@app.route('/honey-deploy')
+@is_logged_in
+def honeyDeploy():
+	"""Do some things"""
+	currentUser =  [session['username']]
+
+	if currentUser[0] == 'admin':
+		now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+
+		config = load_config()
+		tokenUsers = []
+		tokenPassw = []
+
+		for key, data in config.items():
+			if key == 'usernames':
+				for num, name in data.items():
+					if name not in tokenUsers:
+						tokenUsers.append(name)
+
+			if key == 'passwords':
+				for num, passwd in data.items():
+					if passwd not in tokenPassw:
+						tokenPassw.append(passwd)
+
+		sampleUser = ['sampleUser']
+		plainPass = ['samplePass']
+		samplePass = sha256_crypt.encrypt(str(plainPass[0]))
+
+		cur = mysql.connection.cursor()
+		try:
+			try:
+				# Insert Honey Token into DB
+				cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
+				mysql.connection.commit()
+				cur.close
+				
+				flash('that worked', 'success')
+			except Exception as e:
+				logger.info(e)
+				flash('Check Console', 'danger')
+		except Exception as e:
+			logger.info(e)
+			flash('Check Console', 'danger')
+
+
+		logger.info(tokenUsers)
+
+
+
+		return render_template('honey-deploy.html')
+	else:
+		msg = 'Unauthorized'
+		return render_template('default.html', msg=msg)
+
+
+def main():
+	"""main"""
+	genToken()
+
+def secretKey():
+	"""Secret token generated to avoid hard coded secret key"""
+
+	key = secrets.token_hex(16)
+	return key
+
 
 if __name__ == '__main__':
-	app.secret_key='mysecret123'
+	main()
+	app.secret_key=secretKey()
 	app.run(debug=True, use_reloader=True)
