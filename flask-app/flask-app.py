@@ -42,9 +42,9 @@ app = Flask(__name__)
 
 # Config MySQL
 app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'thomas'
+app.config['MYSQL_USER'] = ''
 app.config['MYSQL_PASSWORD'] = ''
-app.config['MYSQL_DB'] = 'flaskapp'
+app.config['MYSQL_DB'] = ''
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 # init MYSQL
@@ -691,7 +691,7 @@ def honeyDeploy():
 		cur = mysql.connection.cursor()
 		try: # Try to check if there are existing honey tokens
 			# Regex find already deployed honey token
-			regex = r"<!--(.*?) -->"
+			regex = r"<!--(.*?)-->"
 			htmlFile = open ('templates/login.html', 'r')
 			htmlFileVar = htmlFile.read()
 			htmlFile.close()
@@ -715,6 +715,7 @@ def honeyDeploy():
 					file = open('templates/login.html', 'w')
 					file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(tokenUser, plainPass), htmlFileVar))
 					file.close()
+
 				except Exception as e:
 					logger.info(e)
 					flash('Check console', 'danger')
@@ -722,6 +723,9 @@ def honeyDeploy():
 				flash('Honeytoken in HTML and DB replaced', 'success')
 			else:
 				try:
+					cur.execute("DELETE FROM users WHERE username LIKE 'dev%'")
+					mysql.connection.commit()
+
 					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
 					mysql.connection.commit()
 					cur.close()
@@ -731,22 +735,20 @@ def honeyDeploy():
 					flash('Check console', 'danger')
 				try:
 					with open('templates/login.html', 'r+') as f:
-						lineNum =0
 						lines = f.readlines()
 						f.seek(0)
-						lines.insert(5, '')
+						lines.insert(5, '\n  <!-- Development Account // Username: {} // Password: {} -->\n'.format(tokenUser, plainPass))
 						f.writelines(lines)
 
 				except Exception as e:
 					logger.info(e)
 					flash('Check console', 'danger')
 
-				flash('Brand new honey token inserted to DB and HTML', 'danger')
+				flash('Brand new honey token inserted to DB and HTML', 'success')
 
 		except Exception as e:
 			logger.info(e)
 			flash(e, 'danger')
-
 
 		return render_template('honey-deploy.html')
 	else:
