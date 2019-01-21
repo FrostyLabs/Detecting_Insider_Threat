@@ -36,7 +36,7 @@ from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
 import secrets
-
+import re
 
 app = Flask(__name__)
 
@@ -44,7 +44,7 @@ app = Flask(__name__)
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = ''
 app.config['MYSQL_PASSWORD'] = ''
-app.config['MYSQL_DB'] = ''
+app.config['MYSQL_DB'] = 'flaskapp'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 # init MYSQL
@@ -107,7 +107,7 @@ def load_config():
 	# Load config from the local file
 	with open('config.json') as config_file:
 		conf = json.load(config_file)
-		logger.info("--> Local config file loaded")
+		#logger.info("--> Local config file loaded")
 
 	return conf
 
@@ -658,22 +658,6 @@ def slack_alerter(msg, webhook_url):
 
 	return
 
-def genToken():
-	"""Generate Honey Token"""
-	config = load_config()
-	TokenUsers = []
-	TokenPassw = []
-
-	for key, data in config.items():
-		if key == 'usernames':
-			for num, name in data.items():
-				if name not in TokenUsers:
-					TokenUsers.append(name)
-		if key == 'passwords':
-			for num, passwd in data.items():
-				if passwd not in TokenPassw:
-					TokenPassw.append(passwd)
-
 
 @app.route('/honey-deploy')
 @is_logged_in
@@ -682,8 +666,6 @@ def honeyDeploy():
 	currentUser =  [session['username']]
 
 	if currentUser[0] == 'admin':
-		now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
-
 		config = load_config()
 		tokenUsers = []
 		tokenPassw = []
@@ -699,29 +681,61 @@ def honeyDeploy():
 					if passwd not in tokenPassw:
 						tokenPassw.append(passwd)
 
-		sampleUser = ['sampleUser']
-		plainPass = ['samplePass']
+		sampleUser = ['sampleUser'] # Need to change to select one out of config.json
+		plainPass = ['samplePass'] # Need to change to select one out of config.json
 		samplePass = sha256_crypt.encrypt(str(plainPass[0]))
 
 		cur = mysql.connection.cursor()
-		try:
-			try:
-				# Insert Honey Token into DB
-				cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
-				mysql.connection.commit()
-				cur.close
-				
+		try: # Try to check if there are existing honey tokens
+			# Regex find already deployed honey token
+			regex = r"<!--(.*?) -->"
+			htmlFile = open ('templates/login.html', 'r')
+			htmlFileVar = htmlFile.read()
+			htmlFile.close()
+			matches = re.findall(regex, htmlFileVar)
+
+			if matches: # if HTMl comtains bait
+				try: #try to insert into db
+					#Delete already existing user
+					cur.execute("DELETE FROM users where username like 'sample%'") # Change to like 'dev%' when the time comes
+					mysql.connection.commit()
+
+					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
+					mysql.connection.commit()
+					cur.close
+
+				except Exception as e:
+					logger.info(e)
+					flash('Check console', 'danger')
+
+				try: #Try to insert into HTML
+					file = open('templates/login.html', 'w')
+					file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(sampleUser[0], plainPass[0]), htmlFileVar)) #change sampleUser and plainPass when the time comes
+					file.close()
+				except Exception as e:
+					logger.info(e)
+					flash('Check console', 'danger')
+
 				flash('that worked', 'success')
-			except Exception as e:
-				logger.info(e)
-				flash('Check Console', 'danger')
+			else:
+				try:
+					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
+					mysql.connection.commit()
+					cur.close()
+				except Exception as e:
+					logger.info(e)
+					flash('Check console', 'danger')
+				try:
+					file = open('templates/login.html', 'w')
+					# TODO: Figure out how insert (not append) a line
+					file.close()
+				except Exception as e:
+					logger.info(e)
+					flash('Check console', 'danger')
+
 		except Exception as e:
 			logger.info(e)
-			flash('Check Console', 'danger')
-
-
-		logger.info(tokenUsers)
-
+			flash(e, 'danger')
 
 
 		return render_template('honey-deploy.html')
@@ -729,10 +743,6 @@ def honeyDeploy():
 		msg = 'Unauthorized'
 		return render_template('default.html', msg=msg)
 
-
-def main():
-	"""main"""
-	genToken()
 
 def secretKey():
 	"""Secret token generated to avoid hard coded secret key"""
@@ -742,6 +752,5 @@ def secretKey():
 
 
 if __name__ == '__main__':
-	main()
 	app.secret_key=secretKey()
 	app.run(debug=True, use_reloader=True)
