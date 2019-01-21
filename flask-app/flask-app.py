@@ -280,6 +280,9 @@ def dashboard():
         if key == 'trapUsers':
             for num, name in data.items():
                 trapUsers.append(name)
+        if key == 'usernames':
+            for num, name in data.items():
+                trapUsers.append(name)
 
 
     articles = cur.fetchall()
@@ -681,9 +684,9 @@ def honeyDeploy():
 					if passwd not in tokenPassw:
 						tokenPassw.append(passwd)
 
-		sampleUser = ['sampleUser'] # Need to change to select one out of config.json
-		plainPass = ['samplePass'] # Need to change to select one out of config.json
-		samplePass = sha256_crypt.encrypt(str(plainPass[0]))
+		tokenUser = secrets.choice(tokenUsers)
+		plainPass = secrets.choice(tokenPassw)
+		encPass = sha256_crypt.encrypt(str(plainPass))
 
 		cur = mysql.connection.cursor()
 		try: # Try to check if there are existing honey tokens
@@ -697,10 +700,10 @@ def honeyDeploy():
 			if matches: # if HTMl comtains bait
 				try: #try to insert into db
 					#Delete already existing user
-					cur.execute("DELETE FROM users where username like 'sample%'") # Change to like 'dev%' when the time comes
+					cur.execute("DELETE FROM users where username like 'dev%'")
 					mysql.connection.commit()
 
-					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
+					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
 					mysql.connection.commit()
 					cur.close
 
@@ -710,28 +713,35 @@ def honeyDeploy():
 
 				try: #Try to insert into HTML
 					file = open('templates/login.html', 'w')
-					file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(sampleUser[0], plainPass[0]), htmlFileVar)) #change sampleUser and plainPass when the time comes
+					file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(tokenUser, plainPass), htmlFileVar))
 					file.close()
 				except Exception as e:
 					logger.info(e)
 					flash('Check console', 'danger')
 
-				flash('that worked', 'success')
+				flash('Honeytoken in HTML and DB replaced', 'success')
 			else:
 				try:
-					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (sampleUser, samplePass))
+					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
 					mysql.connection.commit()
 					cur.close()
+
 				except Exception as e:
 					logger.info(e)
 					flash('Check console', 'danger')
 				try:
-					file = open('templates/login.html', 'w')
-					# TODO: Figure out how insert (not append) a line
-					file.close()
+					with open('templates/login.html', 'r+') as f:
+						lineNum =0
+						lines = f.readlines()
+						f.seek(0)
+						lines.insert(5, '')
+						f.writelines(lines)
+
 				except Exception as e:
 					logger.info(e)
 					flash('Check console', 'danger')
+
+				flash('Brand new honey token inserted to DB and HTML', 'danger')
 
 		except Exception as e:
 			logger.info(e)
@@ -742,7 +752,6 @@ def honeyDeploy():
 	else:
 		msg = 'Unauthorized'
 		return render_template('default.html', msg=msg)
-
 
 def secretKey():
 	"""Secret token generated to avoid hard coded secret key"""
