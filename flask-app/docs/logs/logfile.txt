@@ -1,0 +1,12 @@
+{
+	"HTTP Endpoint Access": {
+		"host": "http://localhost:3000/",
+		"source-ip": "127.0.0.1",
+		"endpoint": "/fake-register"
+	},
+	"Username Access": {
+		"host": "http://localhost:3000/",
+		"source-ip": "127.0.0.1",
+		"username": "dev.alina"
+	}
+}
