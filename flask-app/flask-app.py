@@ -52,7 +52,7 @@ mysql = MySQL(app)
 
 
 __author__ = 'Oliver "othornew" Thornewill \
-			  Adel "0x4d31" Karimi'
+              Adel "0x4d31" Karimi'
 __version__ = '0.2'
 
 # Log to stdout
@@ -69,47 +69,50 @@ logger.setLevel(logging.INFO)
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-	# Load the config file
-	config=load_config()
-	# Honeytoken alerts
-	if request.path in config['traps'] and request.path != "/favicon.ico":
-		# Preparing the alert message
-		alertMessage = alert_msg(request, config)
-		# Slack alert
-		if config['alert']['slack']['enabled'] == "true":
-			WEBHOOK_URL = config['alert']['slack']['webhook-url']
-			slack_alerter(alertMessage, WEBHOOK_URL)
-		# Email alert
-		if config['alert']['email']['enabled'] == "true":
-			email_alerter(alertMessage, config)
-		# SMS alert
-		if config['alert']['twilio']['enabled']== "true":
-			sms_alerter(alertMessage, config)
-		#TODO: HTTP Endpoint Support
-	# Honeypot event logs
-	if request.headers.getlist("X-Forwarded-For"):
-		source_ip = request.headers.getlist("X-Forwarded-For")[0]
-	else:
-		source_ip = request.remote_addr
-	logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
-		source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
-	# Prepare and send the custom HTTP response
-	contype, body = generate_http_response(request, config)
-	# Customize the response using a template (in case you want to return a dynamic response, etc.)
-	# You can comment the next 2 lines if you don't want to use this. /Just an example/
-	if body == "custom.html":
-		return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string))
-	return (send_file(body, mimetype=contype) if "image" in contype else render_template(body))
+    # Load the config file
+    config=load_config()
+    # Honeytoken alerts
+    if request.path in config['traps'] and request.path != "/favicon.ico":
+        # Preparing the alert message
+        alertMessage = alert_msg(request, config)
+        # Slack alert
+        if config['alert']['slack']['enabled'] == "true":
+            WEBHOOK_URL = config['alert']['slack']['webhook-url']
+            slack_alerter(alertMessage, WEBHOOK_URL)
+        # Email alert
+        if config['alert']['email']['enabled'] == "true":
+            email_alerter(alertMessage, config)
+        # SMS alert
+        if config['alert']['twilio']['enabled']== "true":
+            sms_alerter(alertMessage, config)
+        #TODO: HTTP Endpoint Support
+
+        if config['alert']['logfile']['enabled'] == "true":
+            logfile_alerter(alertMessage, config)
+    # Honeypot event logs
+    if request.headers.getlist("X-Forwarded-For"):
+        source_ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        source_ip = request.remote_addr
+    logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
+        source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
+    # Prepare and send the custom HTTP response
+    contype, body = generate_http_response(request, config)
+    # Customize the response using a template (in case you want to return a dynamic response, etc.)
+    # You can comment the next 2 lines if you don't want to use this. /Just an example/
+    if body == "custom.html":
+        return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string))
+    return (send_file(body, mimetype=contype) if "image" in contype else render_template(body))
 
 def load_config():
-	""" Load the configuration file """
-	CONFIGFILE = os.environ.get('configFile')
-	# Load config from the local file
-	with open('config.json') as config_file:
-		conf = json.load(config_file)
-		#logger.info("--> Local config file loaded")
+    """ Load the configuration file """
+    CONFIGFILE = os.environ.get('configFile')
+    # Load config from the local file
+    with open('config.json') as config_file:
+        conf = json.load(config_file)
+        #logger.info("--> Local config file loaded")
 
-	return conf
+    return conf
 
 # About
 @app.route('/about')
@@ -120,7 +123,7 @@ def about():
 # @app.errorhandler(404)
 # def page_not_found(e):
 #     # note that we set the 404 status explicitly
-# 	# http://flask.pocoo.org/docs/1.0/patterns/errorpages/
+#     # http://flask.pocoo.org/docs/1.0/patterns/errorpages/
 #     return render_template('404.html'), 404
 
 # Articles
@@ -261,7 +264,7 @@ def logout():
 @is_logged_in
 def dashboard():
 
-	# Load Config
+    # Load Config
     config=load_config()
     alertMessage = alert_msg(request, config)
 
@@ -275,7 +278,6 @@ def dashboard():
 
     trapUsers = []
 
-	# TODO: Check that this is working properly without bugs
     for key, data in config.items():
         if key == 'trapUsers':
             for num, name in data.items():
@@ -404,364 +406,389 @@ def delete_article(id):
     return redirect(url_for('dashboard'))
 
 def generate_http_response(req, conf):
-	""" Generate HTTP response """
+    """ Generate HTTP response """
 
-	args = ["{}={}".format(key, value) for key, value in request.args.items()]
-	path = req.path
-	con_type = None
-	body_path = None
-	if path in conf['traps']:
-		# Check if the token is defined and has a custom http response
-		for token in args:
-			if (token in conf['traps'][path]) and ("token-response" in conf['traps'][path][token]):
-				con_type = conf['traps'][path][token]['token-response']['content-type']
-				body_path = conf['traps'][path][token]['token-response']['body']
-		# if the 'body_path' is still empty, use the trap/uri response (if there's any)
-		if ("trap-response" in conf['traps'][path]) and body_path is None:
-			con_type = conf['traps'][path]['trap-response']['content-type']
-			body_path = conf['traps'][path]['trap-response']['body']
-	# Load the default HTTP response if the 'body_path' is None
-	if body_path is None:
-		con_type = conf['default-http-response']['content-type']
-		body_path = conf['default-http-response']['body']
+    args = ["{}={}".format(key, value) for key, value in request.args.items()]
+    path = req.path
+    con_type = None
+    body_path = None
+    if path in conf['traps']:
+        # Check if the token is defined and has a custom http response
+        for token in args:
+            if (token in conf['traps'][path]) and ("token-response" in conf['traps'][path][token]):
+                con_type = conf['traps'][path][token]['token-response']['content-type']
+                body_path = conf['traps'][path][token]['token-response']['body']
+        # if the 'body_path' is still empty, use the trap/uri response (if there's any)
+        if ("trap-response" in conf['traps'][path]) and body_path is None:
+            con_type = conf['traps'][path]['trap-response']['content-type']
+            body_path = conf['traps'][path]['trap-response']['body']
+    # Load the default HTTP response if the 'body_path' is None
+    if body_path is None:
+        con_type = conf['default-http-response']['content-type']
+        body_path = conf['default-http-response']['body']
 
-	return con_type, body_path
+    return con_type, body_path
 
 def alert_msg(req, conf):
-	""" Prepare alert message dictionary """
+    """ Prepare alert message dictionary """
 
-	# Message fields
-	url_root = req.url_root
-	full_path = req.full_path
-	path = req.path
-	data = req.data
-	http_method = req.method
-	useragent_str = req.user_agent.string
-	browser = req.user_agent.browser
-	browser_version = req.user_agent.version
-	browser_lang = req.user_agent.language
-	platform = req.user_agent.platform
-	headers = "{}".format(req.headers)
-	args = ["{}={}".format(key, value) for key, value in request.args.items()]
-	# X-Forwarded-For: the originating IP address of the client connecting to the Heroku router
-	if req.headers.getlist("X-Forwarded-For"):
-		source_ip = req.headers.getlist("X-Forwarded-For")[0]
-	else:
-		source_ip = req.remote_addr
+    # Message fields
+    url_root = req.url_root
+    full_path = req.full_path
+    path = req.path
+    data = req.data
+    http_method = req.method
+    useragent_str = req.user_agent.string
+    browser = req.user_agent.browser
+    browser_version = req.user_agent.version
+    browser_lang = req.user_agent.language
+    platform = req.user_agent.platform
+    headers = "{}".format(req.headers)
+    args = ["{}={}".format(key, value) for key, value in request.args.items()]
+    # X-Forwarded-For: the originating IP address of the client connecting to the Heroku router
+    if req.headers.getlist("X-Forwarded-For"):
+        source_ip = req.headers.getlist("X-Forwarded-For")[0]
+    else:
+        source_ip = req.remote_addr
 
-	# Search the config for the token note
-	note = None
-	if path in conf['traps']:
-		# Check if the token is defined and has note
-		for token in args:
-			if (token in conf['traps'][path]) and ("token-note" in conf['traps'][path][token]):
-				note = conf['traps'][path][token]['token-note']
-		# If the 'note' is still empty, use the trap/uri note (if there's any)
-		if ("trap-note" in conf['traps'][path]) and note is None:
-			note = conf['traps'][path]['trap-note']
+    # Search the config for the token note
+    note = None
+    if path in conf['traps']:
+        # Check if the token is defined and has note
+        for token in args:
+            if (token in conf['traps'][path]) and ("token-note" in conf['traps'][path][token]):
+                note = conf['traps'][path][token]['token-note']
+        # If the 'note' is still empty, use the trap/uri note (if there's any)
+        if ("trap-note" in conf['traps'][path]) and note is None:
+            note = conf['traps'][path]['trap-note']
 
-	#TODO: Threat Intel Lookup (Cymon v2)
+    #TODO: Threat Intel Lookup (Cymon v2)
 
-	# Message dictionary
-	msg = {
-		"token-note": note if note else "None",
-		"host": url_root,
-		"path": full_path if full_path else "None",
-		"http-method": http_method,
-		"token": args[0] if args else "None", #Only the first arg
-		"body": data if data else "None",
-		"source-ip": source_ip,
-		"user-agent": useragent_str,
-		"browser": browser if browser else "None",
-		"browser_version": browser_version if browser_version else "None",
-		"browser_lang": browser_lang if browser_lang else "None",
-		"platform": platform if platform else "None",
-		"http-headers": headers
-		#"threat-intel": threat_intel
-	}
+    # Message dictionary
+    msg = {
+        "token-note": note if note else "None",
+        "host": url_root,
+        "path": full_path if full_path else "None",
+        "http-method": http_method,
+        "token": args[0] if args else "None", #Only the first arg
+        "body": data if data else "None",
+        "source-ip": source_ip,
+        "user-agent": useragent_str,
+        "browser": browser if browser else "None",
+        "browser_version": browser_version if browser_version else "None",
+        "browser_lang": browser_lang if browser_lang else "None",
+        "platform": platform if platform else "None",
+        "http-headers": headers
+        #"threat-intel": threat_intel
+    }
 
-	return msg
+    return msg
 
 
 def email_alerter(msg, conf):
-	""" Send Email alert """
+    """ Send Email alert """
 
-	smtp_server = conf['alert']['email']['smtp_server']
-	smtp_port = conf['alert']['email']['smtp_port']
-	smtp_user = conf['alert']['email']['smtp_user']
-	smtp_password = conf['alert']['email']['smtp_password']
-	to_email = conf['alert']['email']['to_email']
-	subject = 'Honeyku Alert'
-	now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
-	body = ("Honeytoken triggered!\n\n"
-			"Time: {}\n"
-			"Source IP: {}\n"
-			#"Threat Intel Report: {}\n"
-			"User-Agent: {}\n"
-			"Token Note: {}\n"
-			"Token: {}\n"
-			"Path: {}\n"
-			"Host: {}").format(
-		now,
-		msg['source-ip'],
-		#msg['threat-intel'] if msg['threat-intel'] else "None",
-		msg['user-agent'],
-		msg['token-note'],
-		msg['token'],
-		msg['path'],
-		msg['host'])
-	email_text = "From: {}\nTo: {}\nSubject: {}\n\n{}".format(
-		smtp_user,
-		", ".join(to_email),
-		subject,
-		body)
+    smtp_server = conf['alert']['email']['smtp_server']
+    smtp_port = conf['alert']['email']['smtp_port']
+    smtp_user = conf['alert']['email']['smtp_user']
+    smtp_password = conf['alert']['email']['smtp_password']
+    to_email = conf['alert']['email']['to_email']
+    subject = 'Honeyku Alert'
+    now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+    body = ("Honeytoken triggered!\n\n"
+            "Time: {}\n"
+            "Source IP: {}\n"
+            #"Threat Intel Report: {}\n"
+            "User-Agent: {}\n"
+            "Token Note: {}\n"
+            "Token: {}\n"
+            "Path: {}\n"
+            "Host: {}").format(
+        now,
+        msg['source-ip'],
+        #msg['threat-intel'] if msg['threat-intel'] else "None",
+        msg['user-agent'],
+        msg['token-note'],
+        msg['token'],
+        msg['path'],
+        msg['host'])
+    email_text = "From: {}\nTo: {}\nSubject: {}\n\n{}".format(
+        smtp_user,
+        ", ".join(to_email),
+        subject,
+        body)
 
-	try:
-		server = smtplib.SMTP(smtp_server, smtp_port)
-		server.ehlo()
-		server.starttls()
-		server.login(smtp_user, smtp_password)
-		server.sendmail(smtp_user, to_email, email_text)
-		server.close()
-		logger.info("Email alert is sent")
-	except smtplib.SMTPException as err:
-		logger.error("Error sending email: {}".format(err))
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, to_email, email_text)
+        server.close()
+        logger.info("Email alert is sent")
+    except smtplib.SMTPException as err:
+        logger.error("Error sending email: {}".format(err))
 
 
 def sms_alerter(msg, conf):
-	""" Send SMS alert """
-	config = load_config()
-	account_sid = config['alert']['twilio']['sid']
-	auth_token = config['alert']['twilio']['auth_token']
-	client = Client(account_sid, auth_token)
+    """ Send SMS alert """
+    config = load_config()
+    account_sid = config['alert']['twilio']['sid']
+    auth_token = config['alert']['twilio']['auth_token']
+    client = Client(account_sid, auth_token)
 
-	now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+    now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
 
-	message = client.messages \
-					.create(
-						body=("Honeytoken triggered!\n\n"
-								"Time: {}\n\n"
-								"Source IP: {}\n\n"
-								#"Threat Intel Report: {}\n"
-								"User-Agent: {}\n\n"
-								"Token Note: {}\n\n"
-								"Token: {}\n\n"
-								"Path: {}\n\n"
-								"Host: {}").format(
-							now,
-							msg['source-ip'],
-							#msg['threat-intel'] if msg['threat-intel'] else "None",
-							msg['user-agent'],
-							msg['token-note'],
-							msg['token'],
-							msg['path'],
-							msg['host']),
-						from_='+447492882057',
-	                     	to='+447710532369'
-					)
+    message = client.messages \
+                    .create(
+                        body=("Honeytoken triggered!\n\n"
+                                "Time: {}\n\n"
+                                "Source IP: {}\n\n"
+                                #"Threat Intel Report: {}\n"
+                                "User-Agent: {}\n\n"
+                                "Token Note: {}\n\n"
+                                "Token: {}\n\n"
+                                "Path: {}\n\n"
+                                "Host: {}").format(
+                            now,
+                            msg['source-ip'],
+                            #msg['threat-intel'] if msg['threat-intel'] else "None",
+                            msg['user-agent'],
+                            msg['token-note'],
+                            msg['token'],
+                            msg['path'],
+                            msg['host']),
+                        from_='+447492882057',
+                             to='+447710532369'
+                    )
 
 
-	logger.info("--> SMS alert is sent. Message ID: "+message.sid)
+    logger.info("--> SMS alert is sent. Message ID: "+message.sid)
 
 
 def slack_alerter(msg, webhook_url):
-	""" Send Slack alert """
+    """ Send Slack alert """
 
-	now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
-	# Preparing Slack message
-	slack_message = {
-		"text": "*Honeytoken triggered!*\nA honeytoken has been triggered by {}".format(msg['source-ip']),
-		"username": "honeyku",
-		"icon_emoji": ":ghost:",
-		"attachments": [
-			{
-				"color": "danger",
-				# "title": "Alert details",
-				"text": "Alert details:",
-				"footer": "honeyku",
-				"footer_icon": "https://raw.githubusercontent.com/0x4D31/honeyLambda/master/docs/slack-footer.png",
-				"fields": [
-					{
-						"title": "Time",
-						"value": now,
-						"short": "true"
-					},
-					{
-						"title": "Source IP Address",
-						"value": msg['source-ip'],
-						"short": "true"
-					},
-					#{
-					#	"title": "Threat Intel Report",
-					#	"value": msg['threat-intel'] if msg['threat-intel'] else "None",
-					#},
-					{
-						"title": "Token",
-						"value": msg['token'],
-						"short": "true"
-					},
-					{
-						"title": "Token Note",
-						"value": msg['token-note'],
-						"short": "true"
-					},
-					{
-						"title": "Host",
-						"value": msg['host'],
-						"short": "true"
-					},
-					{
-						"title": "Path",
-						"value": msg['path'],
-						"short": "true"
-					},
-					{
-						"title": "Browser",
-						"value": msg['browser'],
-						"short": "true"
-					},
-					{
-						"title": "Browser Version",
-						"value": msg['browser_version'],
-						"short": "true"
-					},
-					{
-						"title": "Platform",
-						"value": msg['platform'],
-						"short": "true"
-					},
-					{
-						"title": "HTTP Method",
-						"value": msg['http-method'],
-						"short": "true"
-					},
-					{
-						"title": "User-Agent",
-						"value": msg['user-agent']
-					}
-					#{
-					#	"title": "HTTP Headers",
-					#	"value": msg['http-headers']
-					#}
-				]
-			}
-		]
-	}
+    now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+    # Preparing Slack message
+    slack_message = {
+        "text": "*Honeytoken triggered!*\nA honeytoken has been triggered by {}".format(msg['source-ip']),
+        "username": "honeyku",
+        "icon_emoji": ":ghost:",
+        "attachments": [
+            {
+                "color": "danger",
+                # "title": "Alert details",
+                "text": "Alert details:",
+                "footer": "honeyku",
+                "footer_icon": "https://raw.githubusercontent.com/0x4D31/honeyLambda/master/docs/slack-footer.png",
+                "fields": [
+                    {
+                        "title": "Time",
+                        "value": now,
+                        "short": "true"
+                    },
+                    {
+                        "title": "Source IP Address",
+                        "value": msg['source-ip'],
+                        "short": "true"
+                    },
+                    #{
+                    #    "title": "Threat Intel Report",
+                    #    "value": msg['threat-intel'] if msg['threat-intel'] else "None",
+                    #},
+                    {
+                        "title": "Token",
+                        "value": msg['token'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Token Note",
+                        "value": msg['token-note'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Host",
+                        "value": msg['host'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Path",
+                        "value": msg['path'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Browser",
+                        "value": msg['browser'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Browser Version",
+                        "value": msg['browser_version'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Platform",
+                        "value": msg['platform'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "HTTP Method",
+                        "value": msg['http-method'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "User-Agent",
+                        "value": msg['user-agent']
+                    }
+                    #{
+                    #    "title": "HTTP Headers",
+                    #    "value": msg['http-headers']
+                    #}
+                ]
+            }
+        ]
+    }
 
-	# Sending Slack message
-	req = urllib.request.Request(webhook_url, data=json.dumps(slack_message).encode('utf8'))
+    # Sending Slack message
+    req = urllib.request.Request(webhook_url, data=json.dumps(slack_message).encode('utf8'))
 
-	try:
-		resp = urllib.request.urlopen(req)
-		logger.info("--> Slack alert is sent\n")
-	except urllib.error.HTTPError as err:
-		logger.error("Request failed: {} {}".format(err.code, err.reason))
-	except urllib.error.URLError as err:
-		logger.error("Connection failed: {}".format(err.reason))
+    try:
+        resp = urllib.request.urlopen(req)
+        logger.info("--> Slack alert is sent\n")
+    except urllib.error.HTTPError as err:
+        logger.error("Request failed: {} {}".format(err.code, err.reason))
+    except urllib.error.URLError as err:
+        logger.error("Connection failed: {}".format(err.reason))
 
-	return
+    return
 
+def logfile_alerter(msg, conf):
+    """Log alerts to file"""
+    config = load_config()
+    logPath = config['alert']['logfile']['path']
+    logFile = config['alert']['logfile']['fname']
+    # TODO: logfile_alerter
+
+    #with open(logPath+logFile, 'a') as f:
+    #    f.write('Someone accessed your website hosted on {}. Their IP is: {}\n'.format(msg['host'], msg['source-ip']))
+
+    # Check of file exists
+    if os.path.isfile(logPath+logFile):
+        # Check if file is valid json
+        try:
+            with open(logPath+logFile, 'r') as logsFile:
+                readFile = json.load(logsFile)
+            logger.info('It is valid JSON')
+            # continue
+            # TODO: append json to file
+        except ValueError as e:
+            logger.info("File {} is not valid JSON".format(e))
+            # have to try and write file and log
+    else:
+        # create logfile
+        logger.info('Still have to do else')
 
 @app.route('/honey-deploy')
 @is_logged_in
 def honeyDeploy():
-	"""Do some things"""
-	currentUser =  [session['username']]
+    """Do some things"""
+    currentUser =  [session['username']]
 
-	if currentUser[0] == 'admin':
-		config = load_config()
-		tokenUsers = []
-		tokenPassw = []
+    if currentUser[0] == 'admin':
+        config = load_config()
+        tokenUsers = []
+        tokenPassw = []
 
-		for key, data in config.items():
-			if key == 'usernames':
-				for num, name in data.items():
-					if name not in tokenUsers:
-						tokenUsers.append(name)
+        for key, data in config.items():
+            if key == 'usernames':
+                for num, name in data.items():
+                    if name not in tokenUsers:
+                        tokenUsers.append(name)
 
-			if key == 'passwords':
-				for num, passwd in data.items():
-					if passwd not in tokenPassw:
-						tokenPassw.append(passwd)
+            if key == 'passwords':
+                for num, passwd in data.items():
+                    if passwd not in tokenPassw:
+                        tokenPassw.append(passwd)
 
-		tokenUser = secrets.choice(tokenUsers)
-		plainPass = secrets.choice(tokenPassw)
-		encPass = sha256_crypt.encrypt(str(plainPass))
+        tokenUser = secrets.choice(tokenUsers)
+        plainPass = secrets.choice(tokenPassw)
+        encPass = sha256_crypt.encrypt(str(plainPass))
 
-		cur = mysql.connection.cursor()
-		try: # Try to check if there are existing honey tokens
-			# Regex find already deployed honey token
-			regex = r"<!--(.*?)-->"
-			htmlFile = open ('templates/login.html', 'r')
-			htmlFileVar = htmlFile.read()
-			htmlFile.close()
-			matches = re.findall(regex, htmlFileVar)
+        cur = mysql.connection.cursor()
+        try: # Try to check if there are existing honey tokens
+            # Regex find already deployed honey token
+            regex = r"<!--(.*?)-->"
+            htmlFile = open ('templates/login.html', 'r')
+            htmlFileVar = htmlFile.read()
+            htmlFile.close()
+            matches = re.findall(regex, htmlFileVar)
 
-			if matches: # if HTMl comtains bait
-				try: #try to insert into db
-					#Delete already existing user
-					cur.execute("DELETE FROM users where username like 'dev%'")
-					mysql.connection.commit()
+            if matches: # if HTMl comtains bait
+                try: #try to insert into db
+                    #Delete already existing user
+                    cur.execute("DELETE FROM users where username like 'dev%'")
+                    mysql.connection.commit()
 
-					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
-					mysql.connection.commit()
-					cur.close
+                    cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
+                    mysql.connection.commit()
+                    cur.close
 
-				except Exception as e:
-					logger.info(e)
-					flash('Check console', 'danger')
+                except Exception as e:
+                    logger.info(e)
+                    flash('Check console', 'danger')
 
-				try: #Try to insert into HTML
-					file = open('templates/login.html', 'w')
-					file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(tokenUser, plainPass), htmlFileVar))
-					file.close()
+                try: #Try to insert into HTML
+                    file = open('templates/login.html', 'w')
+                    file.write(re.sub(regex, "<!-- Development Account // Username: {} // Password: {} -->".format(tokenUser, plainPass), htmlFileVar))
+                    file.close()
 
-				except Exception as e:
-					logger.info(e)
-					flash('Check console', 'danger')
+                except Exception as e:
+                    logger.info(e)
+                    flash('Check console', 'danger')
 
-				flash('Honeytoken in HTML and DB replaced', 'success')
-			else:
-				try:
-					cur.execute("DELETE FROM users WHERE username LIKE 'dev%'")
-					mysql.connection.commit()
+                flash('Honeytoken in HTML and DB replaced', 'success')
+            else:
+                try:
+                    cur.execute("DELETE FROM users WHERE username LIKE 'dev%'")
+                    mysql.connection.commit()
 
-					cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
-					mysql.connection.commit()
-					cur.close()
+                    cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
+                    mysql.connection.commit()
+                    cur.close()
 
-				except Exception as e:
-					logger.info(e)
-					flash('Check console', 'danger')
-				try:
-					with open('templates/login.html', 'r+') as f:
-						lines = f.readlines()
-						f.seek(0)
-						lines.insert(5, '\n  <!-- Development Account // Username: {} // Password: {} -->\n'.format(tokenUser, plainPass))
-						f.writelines(lines)
+                except Exception as e:
+                    logger.info(e)
+                    flash('Check console', 'danger')
+                try:
+                    with open('templates/login.html', 'r+') as f:
+                        lines = f.readlines()
+                        f.seek(0)
+                        lines.insert(5, '\n  <!-- Development Account // Username: {} // Password: {} -->\n'.format(tokenUser, plainPass))
+                        f.writelines(lines)
 
-				except Exception as e:
-					logger.info(e)
-					flash('Check console', 'danger')
+                except Exception as e:
+                    logger.info(e)
+                    flash('Check console', 'danger')
 
-				flash('Brand new honey token inserted to DB and HTML', 'success')
+                flash('Brand new honey token inserted to DB and HTML', 'success')
 
-		except Exception as e:
-			logger.info(e)
-			flash(e, 'danger')
+        except Exception as e:
+            logger.info(e)
+            flash(e, 'danger')
 
-		return render_template('honey-deploy.html')
-	else:
-		msg = 'Unauthorized'
-		return render_template('default.html', msg=msg)
+        return render_template('honey-deploy.html')
+    else:
+        msg = 'Unauthorized'
+        return render_template('default.html', msg=msg)
 
 def secretKey():
-	"""Secret token generated to avoid hard coded secret key"""
+    """Secret token generated to avoid hard coded secret key"""
 
-	key = secrets.token_hex(16)
-	return key
-
+    key = secrets.token_hex(16)
+    return key
 
 if __name__ == '__main__':
-	app.secret_key=secretKey()
-	app.run(debug=True, use_reloader=True)
+    app.secret_key=secretKey()
+    # app.run(debug=True, use_reloader=True)
+    app.run(host='0.0.0.0', port=3000, debug=True, use_reloader=True)
