@@ -668,26 +668,56 @@ def logfile_alerter(msg, conf):
     config = load_config()
     logPath = config['alert']['logfile']['path']
     logFile = config['alert']['logfile']['fname']
-    # TODO: logfile_alerter
-
-    #with open(logPath+logFile, 'a') as f:
-    #    f.write('Someone accessed your website hosted on {}. Their IP is: {}\n'.format(msg['host'], msg['source-ip']))
+    now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
 
     # Check of file exists
     if os.path.isfile(logPath+logFile):
         # Check if file is valid json
         try:
-            with open(logPath+logFile, 'r') as logsFile:
-                readFile = json.load(logsFile)
-            logger.info('It is valid JSON')
-            # continue
-            # TODO: append json to file
+            with open(logPath+logFile) as f:
+                logsFile = json.load(f)
+            # JSON is valid, continue
+            # Create new log
+            newLog = {"New Alert: "+now: {
+                                         "src-ip": msg['source-ip'],
+                                         "User-Agent": msg['user-agent'],
+                                         "Token Note": msg['token-note'],
+                                         "Path": msg['path'],
+                                         "Host": msg['host']
+                                         }
+                     }
+
+            # Update existing JSON
+            logsFile.update(newLog)
+
+            # Write to file
+            with open(logPath+logFile, 'w') as f:
+                json.dump(logsFile, f, indent=2)
+
+            print('--> Added log to logs file ({}{}).\n\
+                       Timestamp: {} \n'.format(logPath, logFile, now))
+
         except ValueError as e:
-            logger.info("File {} is not valid JSON".format(e))
+            logger.info("--> File is not valid JSON. Error: {} \n".format(e))
             # have to try and write file and log
+            logger.info("--> If the file is empty, delete it. \n")
     else:
-        # create logfile
-        logger.info('Still have to do else')
+        # Create new log and new 
+        newLog = {"New Alert: "+now: {
+                                     "src-ip": msg['source-ip'],
+                                     "User-Agent": msg['user-agent'],
+                                     "Token Note": msg['token-note'],
+                                     "Path": msg['path'],
+                                     "Host": msg['host']
+                                     }
+                 }
+
+        # Write log to file
+        with open(logPath+logFile, 'w') as f:
+            json.dump(newLog, f, indent=2)
+
+        print('--> Created log file ({}{}) and added log.\n\
+                   Timestamp: {}\n'.format(logPath, logFile, now))@app.route('/honey-deploy')
 
 @app.route('/honey-deploy')
 @is_logged_in
