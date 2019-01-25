@@ -20,7 +20,7 @@
 
 # END
 
-from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, logging
+from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, logging, send_from_directory
 import logging
 import sys
 import os
@@ -66,43 +66,16 @@ logger.addHandler(out_hdlr)
 logger.setLevel(logging.INFO)
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    # Load the config file
-    config=load_config()
-    # Honeytoken alerts
-    if request.path in config['traps'] and request.path != "/favicon.ico":
-        # Preparing the alert message
-        alertMessage = alert_msg(request, config)
-        # Slack alert
-        if config['alert']['slack']['enabled'] == "true":
-            WEBHOOK_URL = config['alert']['slack']['webhook-url']
-            slack_alerter(alertMessage, WEBHOOK_URL)
-        # Email alert
-        if config['alert']['email']['enabled'] == "true":
-            email_alerter(alertMessage, config)
-        # SMS alert
-        if config['alert']['twilio']['enabled']== "true":
-            sms_alerter(alertMessage, config)
-        #TODO: HTTP Endpoint Support
 
-        if config['alert']['logfile']['enabled'] == "true":
-            logfile_alerter(alertMessage, config)
-    # Honeypot event logs
-    if request.headers.getlist("X-Forwarded-For"):
-        source_ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        source_ip = request.remote_addr
-    logger.info('{{"sourceip":"{}","host":"{}","request":"{}","http_method":"{}","body":"{}","user_agent":"{}"}}'.format(
-        source_ip, request.url_root, request.full_path, request.method, request.data, request.user_agent.string))
-    # Prepare and send the custom HTTP response
-    contype, body = generate_http_response(request, config)
-    # Customize the response using a template (in case you want to return a dynamic response, etc.)
-    # You can comment the next 2 lines if you don't want to use this. /Just an example/
-    if body == "custom.html":
-        return (render_template(body, browser = request.user_agent.browser, ua = request.user_agent.string))
-    return (send_file(body, mimetype=contype) if "image" in contype else render_template(body))
+
+@app.route('/', defaults={'path': ''})
+def default(path):
+    return render_template('default.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 def load_config():
     """ Load the configuration file """
@@ -120,11 +93,11 @@ def about():
     return render_template('about.html')
 
 # 404 Error Page
-# @app.errorhandler(404)
-# def page_not_found(e):
-#     # note that we set the 404 status explicitly
-#     # http://flask.pocoo.org/docs/1.0/patterns/errorpages/
-#     return render_template('404.html'), 404
+@app.errorhandler(404)
+def page_not_found(e):
+    # note that we set the 404 status explicitly
+    # http://flask.pocoo.org/docs/1.0/patterns/errorpages/
+    return render_template('404.html'), 404
 
 # Articles
 @app.route('/articles')
@@ -266,7 +239,6 @@ def dashboard():
 
     # Load Config
     config=load_config()
-    alertMessage = alert_msg(request, config)
 
     # Create cursor
     cur = mysql.connection.cursor()
@@ -279,20 +251,15 @@ def dashboard():
     trapUsers = []
 
     for key, data in config.items():
-        if key == 'trapUsers':
-            for num, name in data.items():
-                trapUsers.append(name)
-        if key == 'usernames':
-            for num, name in data.items():
-                trapUsers.append(name)
-
+        for category, info in data.items():
+            if category == 'usernames':
+                for id, name in info.items():
+                    if name not in trapUsers:
+                        trapUsers.append(name)
 
     articles = cur.fetchall()
     if currentUser[0] in trapUsers:
-        #Send alert
-        WEBHOOK_URL = config['alert']['slack']['webhook-url']
-        slack_alerter(alertMessage, WEBHOOK_URL)
-        sms_alerter(alertMessage, config)
+        alerter()
 
         # Check if trapUser user has written anything
         if result > 0:
@@ -484,8 +451,26 @@ def alert_msg(req, conf):
 
     return msg
 
+# Alerter
+@is_logged_in
+def alerter():
+    config=load_config()
+    alertMessage = alert_msg(request, config)
+    # Slack alert
+    if config['alert']['slack']['enabled'] == "true":
+        WEBHOOK_URL = config['alert']['slack']['webhook-url']
+        slack_alerter(alertMessage, WEBHOOK_URL, session['username'])
+    # Email alert
+    if config['alert']['email']['enabled'] == "true":
+        email_alerter(alertMessage, config, session['username'])
+    # SMS alert
+    if config['alert']['twilio']['enabled']== "true":
+        sms_alerter(alertMessage, config, session['username'])
+    # Logfile Alert
+    if config['alert']['logfile']['enabled'] == "true":
+        logfile_alerter(alertMessage, config, session['username'])
 
-def email_alerter(msg, conf):
+def email_alerter(msg, conf, usr):
     """ Send Email alert """
 
     smtp_server = conf['alert']['email']['smtp_server']
@@ -503,7 +488,8 @@ def email_alerter(msg, conf):
             "Token Note: {}\n"
             "Token: {}\n"
             "Path: {}\n"
-            "Host: {}").format(
+            "Host: {}\n"
+            "Username: {}\n").format(
         now,
         msg['source-ip'],
         #msg['threat-intel'] if msg['threat-intel'] else "None",
@@ -511,7 +497,8 @@ def email_alerter(msg, conf):
         msg['token-note'],
         msg['token'],
         msg['path'],
-        msg['host'])
+        msg['host'],
+        usr)
     email_text = "From: {}\nTo: {}\nSubject: {}\n\n{}".format(
         smtp_user,
         ", ".join(to_email),
@@ -525,12 +512,12 @@ def email_alerter(msg, conf):
         server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, to_email, email_text)
         server.close()
-        logger.info("Email alert is sent")
+        logger.info("--> Email alert is sent\n")
     except smtplib.SMTPException as err:
         logger.error("Error sending email: {}".format(err))
 
 
-def sms_alerter(msg, conf):
+def sms_alerter(msg, conf, usr):
     """ Send SMS alert """
     config = load_config()
     account_sid = config['alert']['twilio']['sid']
@@ -549,7 +536,8 @@ def sms_alerter(msg, conf):
                                 "Token Note: {}\n\n"
                                 "Token: {}\n\n"
                                 "Path: {}\n\n"
-                                "Host: {}").format(
+                                "Host: {}\n\n"
+                                "Username: {}\n\n").format(
                             now,
                             msg['source-ip'],
                             #msg['threat-intel'] if msg['threat-intel'] else "None",
@@ -557,16 +545,17 @@ def sms_alerter(msg, conf):
                             msg['token-note'],
                             msg['token'],
                             msg['path'],
-                            msg['host']),
+                            msg['host'],
+                            usr),
                         from_='+447492882057',
                              to='+447710532369'
                     )
 
 
-    logger.info("--> SMS alert is sent. Message ID: "+message.sid)
+    logger.info("--> SMS alert is sent. Message ID: "+message.sid+"\n")
 
 
-def slack_alerter(msg, webhook_url):
+def slack_alerter(msg, webhook_url, usr):
     """ Send Slack alert """
 
     now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
@@ -611,6 +600,10 @@ def slack_alerter(msg, webhook_url):
                         "title": "Host",
                         "value": msg['host'],
                         "short": "true"
+                    },
+                    {
+                        "title": "Username",
+                        "value": usr
                     },
                     {
                         "title": "Path",
@@ -663,12 +656,31 @@ def slack_alerter(msg, webhook_url):
 
     return
 
-def logfile_alerter(msg, conf):
+def logfile_alerter(msg, conf, usr):
     """Log alerts to file"""
+    # logger.info(session['username'])
     config = load_config()
     logPath = config['alert']['logfile']['path']
     logFile = config['alert']['logfile']['fname']
     now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
+
+    # Find stored honey token
+    try:
+        cur = mysql.connection.cursor()
+
+        # Get tokens
+        tokenSearch = "SELECT username FROM users WHERE username LIKE 'dev%'"
+        tokens = cur.execute(tokenSearch)
+
+        deployedToken = cur.fetchall()
+
+        cur.close()
+
+        dictToken = deployedToken[0]
+        #username = dictToken.get('username')
+        deployedTokenValue = dictToken.get('username')
+    except Exception as e:
+        logger.info(e)
 
     # Check of file exists
     if os.path.isfile(logPath+logFile):
@@ -678,12 +690,15 @@ def logfile_alerter(msg, conf):
                 logsFile = json.load(f)
             # JSON is valid, continue
             # Create new log
-            newLog = {"New Alert: "+now: {
+            newLog = {"Honey token triggered: "+now: {
+                                         "Current Deployed Token": deployedTokenValue,
                                          "src-ip": msg['source-ip'],
                                          "User-Agent": msg['user-agent'],
                                          "Token Note": msg['token-note'],
                                          "Path": msg['path'],
-                                         "Host": msg['host']
+                                         "Host": msg['host'],
+                                         "Time": now,
+                                         "User": usr
                                          }
                      }
 
@@ -694,21 +709,23 @@ def logfile_alerter(msg, conf):
             with open(logPath+logFile, 'w') as f:
                 json.dump(logsFile, f, indent=2)
 
-            print('--> Added log to logs file ({}{}).\n\
-                       Timestamp: {} \n'.format(logPath, logFile, now))
+            logger.info("--> Added log to logs file ({}{})\n".format(logPath, logFile))
 
         except ValueError as e:
             logger.info("--> File is not valid JSON. Error: {} \n".format(e))
             # have to try and write file and log
             logger.info("--> If the file is empty, delete it. \n")
     else:
-        # Create new log and new 
-        newLog = {"New Alert: "+now: {
+        # Create new log
+        newLog = {"Honey token triggered: "+now: {
+                                     "Current Deployed Token": deployedTokenValue,
                                      "src-ip": msg['source-ip'],
                                      "User-Agent": msg['user-agent'],
                                      "Token Note": msg['token-note'],
                                      "Path": msg['path'],
-                                     "Host": msg['host']
+                                     "Host": msg['host'],
+                                     "Time": now,
+                                     "User": usr
                                      }
                  }
 
@@ -716,8 +733,7 @@ def logfile_alerter(msg, conf):
         with open(logPath+logFile, 'w') as f:
             json.dump(newLog, f, indent=2)
 
-        print('--> Created log file ({}{}) and added log.\n\
-                   Timestamp: {}\n'.format(logPath, logFile, now))@app.route('/honey-deploy')
+        logger.info("---> Created Log file ({}{}) and added log\n".format(logPath, logFile))
 
 @app.route('/honey-deploy')
 @is_logged_in
@@ -730,16 +746,21 @@ def honeyDeploy():
         tokenUsers = []
         tokenPassw = []
 
-        for key, data in config.items():
-            if key == 'usernames':
-                for num, name in data.items():
-                    if name not in tokenUsers:
-                        tokenUsers.append(name)
 
-            if key == 'passwords':
-                for num, passwd in data.items():
-                    if passwd not in tokenPassw:
-                        tokenPassw.append(passwd)
+
+        for key, data in config.items():
+            for category, info in data.items():
+                if category == 'usernames':
+                    for id, name in info.items():
+                        if name not in tokenUsers:
+                            tokenUsers.append(name)
+
+                if category == 'passwords':
+                    for num, passwd in info.items():
+                        if passwd not in tokenPassw:
+                            tokenPassw.append(passwd)
+
+        logger.info(tokenUsers)
 
         tokenUser = secrets.choice(tokenUsers)
         plainPass = secrets.choice(tokenPassw)
@@ -749,7 +770,7 @@ def honeyDeploy():
         try: # Try to check if there are existing honey tokens
             # Regex find already deployed honey token
             regex = r"<!--(.*?)-->"
-            htmlFile = open ('templates/login.html', 'r')
+            htmlFile = open ('templates/login.html')
             htmlFileVar = htmlFile.read()
             htmlFile.close()
             matches = re.findall(regex, htmlFileVar)
