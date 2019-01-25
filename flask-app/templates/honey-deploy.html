@@ -2,9 +2,8 @@
 
 {% block body %}
   <h1>Honey Deploy Page</h1>
-  <p>Hello Honey Deploy</p>
   {% if session.username == 'admin' %}
-  <a href="/login" class="btn btn-primary btn-md">Go to login</a>
+  <a href="/logout" class="btn btn-primary btn-md">Go to login</a><p   ><a href="/dashboard" class="btn btn-primary btm-md">Return to Dashboard</a>
   {% endif %}
 
 {% endblock %}
