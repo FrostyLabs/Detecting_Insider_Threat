@@ -4,70 +4,30 @@
 		"body": "default.html"
 	},
 	"traps": {
-		"/awesomeapp/v2/iam/creds": {
-			"trap-note": "default note for the uri",
-			"trap-response": {
-				"content-type": "text/html",
-				"body": "/static/homer.png"
-			},
-			"id=1": {
-				"token-note": "sample note for the token"
-			}
+		"usernames": {
+			"1": "dev.cordelia",
+			"2": "dev.patience",
+			"3": "dev.jolene",
+			"4": "dev.shery",
+			"5": "dev.valentin",
+			"6": "dev.mammie",
+			"7": "dev.alina",
+			"8": "dev.bobbye",
+			"9": "dev.constance",
+			"10": "dev.faith"
 		},
-		"/v1/get-pass": {
-			"user=jack": {
-				"token-note": "token is embedded in secret.doc",
-				"token-response": {
-					"content-type": "image/png",
-					"body": "static/homer.png"
-				}
-			},
-			"page=2": {
-				"token-note": "hidden link in login page",
-				"token-response": {
-					"content-type": "image/jpg",
-					"body": "static/homer.jpg"
-				}
-			}
-		},
-		"/fake-register": {
-			"trap-note": "Fake Register",
-			"trap-response": {
-				"content-type": "text/html",
-				"body": "fake-register.html"
-			}
+		"passwords": {
+			"1": "am7Bdq",
+			"2": "F3Yndg",
+			"3": "w4fPND",
+			"4": "6f7BqP",
+			"5": "Abu7WV",
+			"6": "f7Ct9b",
+			"7": "QXq3hF",
+			"8": "6xSfSe",
+			"9": "hEyD99",
+			"10": "Ng5LRC"
 		}
-	},
-	"trapUsers": {
-		"1": "sarah",
-		"2": "johnny",
-		"3": "kerry",
-		"4": "george",
-		"5": "g.russel"
-	},
-	"usernames": {
-		"1": "cordelia",
-		"2": "patience",
-		"3": "jolene",
-		"4": "shery",
-		"5": "valentin",
-		"6": "mammie",
-		"7": "alina",
-		"8": "bobbye",
-		"9": "constance",
-		"10": "faith"
-	},
-	"passwords": {
-		"1": "am7Bdq",
-		"2": "F3Yndg",
-		"3": "w4fPND",
-		"4": "6f7BqP",
-		"5": "Abu7WV",
-		"6": "f7Ct9b",
-		"7": "QXq3hF",
-		"8": "6xSfSe",
-		"9": "hEyD99",
-		"10": "Ng5LRC"
 	},
 	"alert": {
 		"slack": {
@@ -93,7 +53,7 @@
 			}
 		},
 		"logfile":{
-			"enabled": "true",
+			"enabled": "false",
 			"path": "docs/logs/",
 			"fname": "logfile.txt"
 		}
