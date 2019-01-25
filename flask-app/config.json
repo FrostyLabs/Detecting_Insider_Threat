@@ -91,6 +91,11 @@
 				"from": "",
 				"to": ""
 			}
+		},
+		"logfile":{
+			"enabled": "true",
+			"path": "docs/logs/",
+			"fname": "logfile.txt"
 		}
 	},
 	"threat-intel-lookup": {
