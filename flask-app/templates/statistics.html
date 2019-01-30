@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <h1>Hello Statistics</h1>
+  <table class="table table-striped">
+    <tr>
+      <th>IP address</th>
+      <th>Two Weeks</th>
+      <th>One Week</th>
+      <th>Three Days</th>
+      <th>Total Count</th>
+    </tr>
+    {% for stat in stats %}
+      <tr>
+        <td>{{stat.ip_addr}}</td>
+        <td>{{stat.two_weeks}}</td>
+        <td>{{stat.one_week}}</td>
+        <td>{{stat.three_days}}</td>
+        <td>{{stat.total}}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endblock %}
