@@ -67,7 +67,6 @@ logger.setLevel(logging.INFO)
 
 
 
-
 @app.route('/', defaults={'path': ''})
 def default(path):
     return render_template('default.html')
@@ -130,6 +129,7 @@ def article(id):
     article = cur.fetchone()
 
     return render_template('article.html', article=article)
+    cur.close()
 
 
 # Register Form Class
@@ -485,8 +485,6 @@ def email_alerter(msg, conf, usr):
             "Source IP: {}\n"
             #"Threat Intel Report: {}\n"
             "User-Agent: {}\n"
-            "Token Note: {}\n"
-            "Token: {}\n"
             "Path: {}\n"
             "Host: {}\n"
             "Username: {}\n").format(
@@ -494,8 +492,6 @@ def email_alerter(msg, conf, usr):
         msg['source-ip'],
         #msg['threat-intel'] if msg['threat-intel'] else "None",
         msg['user-agent'],
-        msg['token-note'],
-        msg['token'],
         msg['path'],
         msg['host'],
         usr)
@@ -533,8 +529,6 @@ def sms_alerter(msg, conf, usr):
                                 "Source IP: {}\n\n"
                                 #"Threat Intel Report: {}\n"
                                 "User-Agent: {}\n\n"
-                                "Token Note: {}\n\n"
-                                "Token: {}\n\n"
                                 "Path: {}\n\n"
                                 "Host: {}\n\n"
                                 "Username: {}\n\n").format(
@@ -542,8 +536,6 @@ def sms_alerter(msg, conf, usr):
                             msg['source-ip'],
                             #msg['threat-intel'] if msg['threat-intel'] else "None",
                             msg['user-agent'],
-                            msg['token-note'],
-                            msg['token'],
                             msg['path'],
                             msg['host'],
                             usr),
@@ -586,16 +578,6 @@ def slack_alerter(msg, webhook_url, usr):
                     #    "title": "Threat Intel Report",
                     #    "value": msg['threat-intel'] if msg['threat-intel'] else "None",
                     #},
-                    {
-                        "title": "Token",
-                        "value": msg['token'],
-                        "short": "true"
-                    },
-                    {
-                        "title": "Token Note",
-                        "value": msg['token-note'],
-                        "short": "true"
-                    },
                     {
                         "title": "Host",
                         "value": msg['host'],
@@ -690,11 +672,10 @@ def logfile_alerter(msg, conf, usr):
                 logsFile = json.load(f)
             # JSON is valid, continue
             # Create new log
-            newLog = {"Honey token triggered: "+now: {
+            newLog = {"Honey token triggered - "+now: {
                                          "Current Deployed Token": deployedTokenValue,
                                          "src-ip": msg['source-ip'],
                                          "User-Agent": msg['user-agent'],
-                                         "Token Note": msg['token-note'],
                                          "Path": msg['path'],
                                          "Host": msg['host'],
                                          "Time": now,
@@ -717,11 +698,10 @@ def logfile_alerter(msg, conf, usr):
             logger.info("--> If the file is empty, delete it. \n")
     else:
         # Create new log
-        newLog = {"Honey token triggered: "+now: {
+        newLog = {"Honey token triggered - "+now: {
                                      "Current Deployed Token": deployedTokenValue,
                                      "src-ip": msg['source-ip'],
                                      "User-Agent": msg['user-agent'],
-                                     "Token Note": msg['token-note'],
                                      "Path": msg['path'],
                                      "Host": msg['host'],
                                      "Time": now,
@@ -783,7 +763,7 @@ def honeyDeploy():
 
                     cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
                     mysql.connection.commit()
-                    cur.close
+                    cur.close()
 
                 except Exception as e:
                     logger.info(e)
@@ -832,6 +812,89 @@ def honeyDeploy():
     else:
         msg = 'Unauthorized'
         return render_template('default.html', msg=msg)
+
+
+def analyze_logfile():
+    config = load_config()
+
+    logFile = config['alert']['logfile']['path'] + config['alert']['logfile']['fname']
+
+    with open(logFile) as f:
+        lFile = json.load(f)
+
+    numberDict = {}
+
+    for key, value in lFile.items():
+        if value["src-ip"] not in numberDict:
+            numberDict[value["src-ip"]] = []
+        time = value["Time"]
+        cutTime = time[:-4]
+        convTime = datetime.datetime.strptime(cutTime, "%a, %d %b %Y %H:%M:%S")
+        now = datetime.datetime.now()
+        since = now - convTime
+        numberDict[value["src-ip"]].append(since)
+
+    for IP, value in numberDict.items():
+        ftCount = 0
+        sCount = 0
+        tCount = 0
+        # print("Tokens logged by {}:".format(IP))
+        for item in value:
+            if 8 < item.days < 14:
+                ftCount += 1
+            if 4 < item.days < 7:
+                sCount += 1
+            if item.days < 3:
+                tCount += 1
+
+        # print("{} has logged {} tokens in the past 14 days".format(IP, ftCount))
+        # print("{} has logged {} tokens in the past  7 days".format(IP, sCount))
+        # print("{} has logged {} tokens in the past  3 days\n".format(IP, tCount))
+
+        try:
+            cur = mysql.connection.cursor()
+            cur.execute("DELETE FROM stats WHERE ip_addr = '{}'".format(IP))
+            logger.info('Updating Stats Records')
+            totalCount = ftCount+sCount+tCount
+            # print("Total: {}".format(ftCount+sCount+tCount))
+            cur.execute("INSERT INTO stats(ip_addr, two_weeks, one_week, three_days, total) VALUES('{}', {}, {}, {}, {})".format(IP, ftCount, sCount, tCount, totalCount))
+            mysql.connection.commit()
+            cur.close()
+        except Exception as err:
+            print(err)
+
+    logger.info('Stats records up to date')
+
+
+
+@app.route('/statistics')
+@is_logged_in
+def stats_page():
+    currentUser =  [session['username']]
+    analyze_logfile()
+
+    if currentUser[0] == 'admin':
+        try:
+            # Create cursor
+            cur = mysql.connection.cursor()
+
+            # Get stats
+            result = cur.execute("SELECT * FROM stats")
+
+            stats = cur.fetchall()
+
+            cur.close()
+
+            return render_template('statistics.html', stats=stats)
+
+        except Exception as err:
+            logger.info(err)
+
+    else:
+        msg = 'Unauthorized'
+        return render_template('default.html', msg=msg)
+
+
 
 def secretKey():
     """Secret token generated to avoid hard coded secret key"""
