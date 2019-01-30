@@ -55,7 +55,7 @@
 		"logfile":{
 			"enabled": "false",
 			"path": "docs/logs/",
-			"fname": "logfile.txt"
+			"fname": "logfile.json"
 		}
 	},
 	"threat-intel-lookup": {
