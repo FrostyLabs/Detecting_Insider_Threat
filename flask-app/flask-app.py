@@ -25,6 +25,7 @@ import logging
 import sys
 import os
 import json
+import datetime
 import time
 import urllib.request
 import urllib.error
@@ -37,6 +38,7 @@ from passlib.hash import sha256_crypt
 from functools import wraps
 import secrets
 import re
+import pprint
 
 app = Flask(__name__)
 
@@ -810,8 +812,8 @@ def honeyDeploy():
 
         return render_template('honey-deploy.html')
     else:
-        msg = 'Unauthorized'
-        return render_template('default.html', msg=msg)
+        flash('Unauthorized, Please login', 'danger')
+        return redirect(url_for('login'))
 
 
 def analyze_logfile():
@@ -840,11 +842,11 @@ def analyze_logfile():
         tCount = 0
         # print("Tokens logged by {}:".format(IP))
         for item in value:
-            if 8 < item.days < 14:
+            if 7 <= item.days <= 14:
                 ftCount += 1
-            if 4 < item.days < 7:
+            if 3 <= item.days <= 7:
                 sCount += 1
-            if item.days < 3:
+            if item.days <= 3:
                 tCount += 1
 
         # print("{} has logged {} tokens in the past 14 days".format(IP, ftCount))
@@ -854,7 +856,6 @@ def analyze_logfile():
         try:
             cur = mysql.connection.cursor()
             cur.execute("DELETE FROM stats WHERE ip_addr = '{}'".format(IP))
-            logger.info('Updating Stats Records')
             totalCount = ftCount+sCount+tCount
             # print("Total: {}".format(ftCount+sCount+tCount))
             cur.execute("INSERT INTO stats(ip_addr, two_weeks, one_week, three_days, total) VALUES('{}', {}, {}, {}, {})".format(IP, ftCount, sCount, tCount, totalCount))
@@ -891,10 +892,58 @@ def stats_page():
             logger.info(err)
 
     else:
-        msg = 'Unauthorized'
-        return render_template('default.html', msg=msg)
+        flash('Unauthorized, Please login', 'danger')
+        return redirect(url_for('login'))
+
+@app.route('/delete_stat/<string:ip>', methods=['POST'])
+@is_logged_in
+def delete_stat(ip):
+    currentUser = [session['username']]
+
+    if currentUser[0] == 'admin':
+        # Try to delete value from MySQL
+        try:
+            cur = mysql.connection.cursor()
+            cur.execute("DELETE FROM stats WHERE ip_addr = %s", [ip])
+
+            mysql.connection.commit()
+            cur.close()
+
+            logger.info('Stat {} deleted from database'.format(ip))
+
+        except Exception as err:
+            logger.info(err)
+            flash('Problems deleting records from database', 'danger')
+            return redirect(url_for('dashboard'))
+
+        # Try to delete value from logfile.json
+        try:
+            config = load_config()
+            logFile = config['alert']['logfile']['path'] + config['alert']['logfile']['fname']
+
+            with open(logFile) as f:
+                lFile = json.load(f)
+
+            json_after_deleting = {k: v for k, v in lFile.items() if v['src-ip'] != ip}
+
+            with open(logFile, 'w') as f:
+                json.dump(json_after_deleting, f, indent=2)
+
+            logger.info('Stat {} deleted from {}'.format(ip, logFile))
+
+        except Exception as err:
+            logger.info(err)
+            flash('Problems deleting records from logfile.json', 'danger')
+            return redirect(url_for('dashboard'))
+
+        flash('Successfully deleted statistics for IP: {}'.format(ip), 'success')
+
+        return redirect('/statistics')
 
 
+    else:
+        flash('Unauthorized, Please login', 'danger')
+        return redirect(url_for('login'))
 
 def secretKey():
     """Secret token generated to avoid hard coded secret key"""
