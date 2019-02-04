@@ -38,7 +38,6 @@ from passlib.hash import sha256_crypt
 from functools import wraps
 import secrets
 import re
-import pprint
 
 app = Flask(__name__)
 
@@ -66,6 +65,7 @@ out_hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 out_hdlr.setLevel(logging.INFO)
 logger.addHandler(out_hdlr)
 logger.setLevel(logging.INFO)
+
 
 
 
@@ -842,9 +842,9 @@ def analyze_logfile():
         tCount = 0
         # print("Tokens logged by {}:".format(IP))
         for item in value:
-            if 7 <= item.days <= 14:
+            if 8 <= item.days <= 14:
                 ftCount += 1
-            if 3 <= item.days <= 7:
+            if 4 <= item.days <= 7:
                 sCount += 1
             if item.days <= 3:
                 tCount += 1
@@ -940,6 +940,30 @@ def delete_stat(ip):
 
         return redirect('/statistics')
 
+
+    else:
+        flash('Unauthorized, Please login', 'danger')
+        return redirect(url_for('login'))
+
+@app.route('/threats')
+@is_logged_in
+def threats():
+    analyze_logfile()
+    currentUser = [session['username']]
+
+    if currentUser[0] == 'admin':
+        try:
+            cur = mysql.connection.cursor()
+
+            result = cur.execute("SELECT ip_addr, total FROM stats")
+
+            statValues = cur.fetchall()
+            cur.close()
+
+            return render_template('threats.html', stats=statValues)
+
+        except Exception as err:
+            logger.info(err)
 
     else:
         flash('Unauthorized, Please login', 'danger')
