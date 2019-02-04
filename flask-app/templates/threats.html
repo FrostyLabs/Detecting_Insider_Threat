@@ -1,0 +1,58 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+  <h1>Threats</h1>
+
+  <h4>High</h4>
+  <table class="table table-striped">
+    <tr>
+      <th>IP Address</th>
+      <th>Count</th>
+    </tr>
+    {% for stat in stats %}
+      {% if stat.total >=6%}
+        <tr>
+          <td>{{stat.ip_addr}}</td>
+          <td>{{stat.total}}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+  </table>
+
+  <hr>
+
+  <h4>Medium</h4>
+  <table class="table table-striped">
+    <tr>
+      <th>IP Address</th>
+      <th>Count</th>
+    </tr>
+    {% for stat in stats %}
+      {% if 3<= stat.total <=5%}
+        <tr>
+          <td>{{stat.ip_addr}}</td>
+          <td>{{stat.total}}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+  </table>
+
+  <hr>
+
+  <h4>Low</h4>
+  <table class="table table-striped">
+    <tr>
+      <th>IP Address</th>
+      <th>Count</th>
+    </tr>
+    {% for stat in stats %}
+      {% if stat.total <= 2 %}
+        <tr>
+          <td>{{stat.ip_addr}}</td>
+          <td>{{stat.total}}</td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+  </table>
+
+{% endblock %}
