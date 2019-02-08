@@ -380,16 +380,16 @@ def generate_http_response(req, conf):
     path = req.path
     con_type = None
     body_path = None
-    if path in conf['traps']:
+    if path in conf['tokens']:
         # Check if the token is defined and has a custom http response
         for token in args:
-            if (token in conf['traps'][path]) and ("token-response" in conf['traps'][path][token]):
-                con_type = conf['traps'][path][token]['token-response']['content-type']
-                body_path = conf['traps'][path][token]['token-response']['body']
+            if (token in conf['tokens'][path]) and ("token-response" in conf['tokens'][path][token]):
+                con_type = conf['tokens'][path][token]['token-response']['content-type']
+                body_path = conf['tokens'][path][token]['token-response']['body']
         # if the 'body_path' is still empty, use the trap/uri response (if there's any)
-        if ("trap-response" in conf['traps'][path]) and body_path is None:
-            con_type = conf['traps'][path]['trap-response']['content-type']
-            body_path = conf['traps'][path]['trap-response']['body']
+        if ("trap-response" in conf['tokens'][path]) and body_path is None:
+            con_type = conf['tokens'][path]['trap-response']['content-type']
+            body_path = conf['tokens'][path]['trap-response']['body']
     # Load the default HTTP response if the 'body_path' is None
     if body_path is None:
         con_type = conf['default-http-response']['content-type']
@@ -421,14 +421,14 @@ def alert_msg(req, conf):
 
     # Search the config for the token note
     note = None
-    if path in conf['traps']:
+    if path in conf['tokens']:
         # Check if the token is defined and has note
         for token in args:
-            if (token in conf['traps'][path]) and ("token-note" in conf['traps'][path][token]):
-                note = conf['traps'][path][token]['token-note']
+            if (token in conf['tokens'][path]) and ("token-note" in conf['tokens'][path][token]):
+                note = conf['tokens'][path][token]['token-note']
         # If the 'note' is still empty, use the trap/uri note (if there's any)
-        if ("trap-note" in conf['traps'][path]) and note is None:
-            note = conf['traps'][path]['trap-note']
+        if ("trap-note" in conf['tokens'][path]) and note is None:
+            note = conf['tokens'][path]['trap-note']
 
     #TODO: Threat Intel Lookup (Cymon v2)
 
@@ -519,6 +519,8 @@ def sms_alerter(msg, conf, usr):
     config = load_config()
     account_sid = config['alert']['twilio']['sid']
     auth_token = config['alert']['twilio']['auth_token']
+    fromNumber = config['alert']['twilio']['numbers']['from']
+    toNumber = config['alert']['twilio']['numbers']['to']
     client = Client(account_sid, auth_token)
 
     now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
@@ -540,8 +542,8 @@ def sms_alerter(msg, conf, usr):
                             msg['path'],
                             msg['host'],
                             usr),
-                        from_='+447492882057',
-                             to='+447710532369'
+                        from_="{}".format(fromNumber),
+                           to="{}".format(toNumber)
                     )
 
 
@@ -642,8 +644,7 @@ def slack_alerter(msg, webhook_url, usr):
 def logfile_alerter(msg, conf, usr):
     """Log alerts to file"""
     config = load_config()
-    logPath = config['alert']['logfile']['path']
-    logFile = config['alert']['logfile']['fname']
+    logFile = config['alert']['logfile']['path'] + config['alert']['logfile']['fname']
     now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
 
     # Find stored honey token
@@ -665,10 +666,10 @@ def logfile_alerter(msg, conf, usr):
         logger.info(e)
 
     # Check of file exists
-    if os.path.isfile(logPath+logFile):
+    if os.path.isfile(logFile):
         # Check if file is valid json
         try:
-            with open(logPath+logFile) as f:
+            with open(logFile) as f:
                 logsFile = json.load(f)
             # JSON is valid, continue
             # Create new log
@@ -687,10 +688,10 @@ def logfile_alerter(msg, conf, usr):
             logsFile.update(newLog)
 
             # Write to file
-            with open(logPath+logFile, 'w') as f:
+            with open(logFile, 'w') as f:
                 json.dump(logsFile, f, indent=2)
 
-            logger.info("--> Added log to logs file ({}{})\n".format(logPath, logFile))
+            logger.info("--> Added log to logs file ({})\n".format(logFile))
 
         except ValueError as e:
             logger.info("--> File is not valid JSON. Error: {} \n".format(e))
@@ -710,10 +711,10 @@ def logfile_alerter(msg, conf, usr):
                  }
 
         # Write log to file
-        with open(logPath+logFile, 'w') as f:
+        with open(logFile, 'w') as f:
             json.dump(newLog, f, indent=2)
 
-        logger.info("---> Created Log file ({}{}) and added log\n".format(logPath, logFile))
+        logger.info("---> Created Log file ({}) and added log\n".format(logFile))
 
 @app.route('/honey-deploy')
 @is_logged_in
@@ -724,24 +725,17 @@ def honeyDeploy():
     if currentUser[0] == 'admin':
         config = load_config()
         tokenUsers = []
-        tokenPassw = []
-
-
 
         for key, data in config.items():
-            for category, info in data.items():
-                if category == 'usernames':
-                    for id, name in info.items():
-                        if name not in tokenUsers:
-                            tokenUsers.append(name)
-
-                if category == 'passwords':
-                    for num, passwd in info.items():
-                        if passwd not in tokenPassw:
-                            tokenPassw.append(passwd)
+            if key == 'tokens':
+                for category, info in data.items():
+                    if category == 'usernames':
+                        for id, name in info.items():
+                            if name not in tokenUsers:
+                                tokenUsers.append(name)
 
         tokenUser = secrets.choice(tokenUsers)
-        plainPass = secrets.choice(tokenPassw)
+        plainPass = generate_password()
         encPass = sha256_crypt.encrypt(str(plainPass))
 
         cur = mysql.connection.cursor()
@@ -811,6 +805,26 @@ def honeyDeploy():
         flash('Unauthorized, Please login', 'danger')
         return redirect(url_for('login'))
 
+
+def generate_password():
+    """Generate Random Password with length 10"""
+
+    # Define Character Set
+    charset="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    charset+=charset.lower()
+    charset+="1234567890"
+
+    # Initiate Password List
+    password=[]
+    for n in range(10):
+        password.append(secrets.choice(charset))
+
+    # Convert list into string
+    result = ''
+    for item in password:
+        result += item
+
+    return result
 
 def analyze_logfile():
     config = load_config()
@@ -972,12 +986,16 @@ def secretKey():
 
 @app.before_request
 def csrf_protect():
+	"""Checks whether there is CSRF
+	   token when submitting form"""
 	if request.method == "POST":
 		token = session.pop('_csrf_token', None)
 		if not token or token != request.form.get('_csrf_token'):
 			abort(403)
 
 def generate_csrf_token():
+	"""Generates CSRF Token
+	   if there is none existing"""
 	if '_csrf_token' not in session:
 		session['_csrf_token'] = secretKey()
 	return session['_csrf_token']
