@@ -20,7 +20,7 @@
 
 # END
 
-from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, logging, send_from_directory
+from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, logging, send_from_directory, abort
 import logging
 import sys
 import os
@@ -84,7 +84,6 @@ def load_config():
     # Load config from the local file
     with open('config.json') as config_file:
         conf = json.load(config_file)
-        #logger.info("--> Local config file loaded")
 
     return conf
 
@@ -126,7 +125,7 @@ def article(id):
     cur = mysql.connection.cursor()
 
     # Get article
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+    result = cur.execute("SELECT * FROM articles WHERE id = {}".format(id))
 
     article = cur.fetchone()
 
@@ -161,7 +160,7 @@ def register():
 
         # Execute query
         try:
-            cur.execute("INSERT INTO users(name, email, username, password) VALUES(%s, %s, %s, %s)", (name, email, username, password))
+            cur.execute("INSERT INTO users(name, email, username, password) VALUES('{}', '{}', '{}', '{}')".format(name, email, username, password))
 
             # Commit to DB
             mysql.connection.commit()
@@ -172,8 +171,8 @@ def register():
             flash('You are now registered and can log in', 'success')
 
             return redirect(url_for('login'))
-        except:
-            flash('Username Exists ', 'danger')
+        except Exception as err:
+            flash(err, 'danger')
     return render_template('register.html', form=form)
 
 
@@ -189,7 +188,7 @@ def login():
         cur = mysql.connection.cursor()
 
         # Get user by username
-        result = cur.execute("SELECT * FROM users WHERE username = %s", [username])
+        result = cur.execute("SELECT * FROM users WHERE username = '{}'".format(username))
 
         if result > 0:
             # Get stored hash
@@ -246,7 +245,7 @@ def dashboard():
     cur = mysql.connection.cursor()
 
     # Show articles only from the user logged in
-    result = cur.execute("SELECT * FROM articles WHERE author = %s", [session['username']])
+    result = cur.execute("SELECT * FROM articles WHERE author = '{}'".format(session['username']))
 
     currentUser =  [session['username']]
 
@@ -299,7 +298,7 @@ def add_article():
         cur = mysql.connection.cursor()
 
         # Execute
-        cur.execute("INSERT INTO articles(title, body, author) VALUES(%s, %s, %s)",(title, body, session['username']))
+        cur.execute("INSERT INTO articles(title, body, author) VALUES('{}', '{}', '{}')".format(title, body, session['username']))
 
         # Commit to DB
         mysql.connection.commit()
@@ -322,7 +321,7 @@ def edit_article(id):
     cur = mysql.connection.cursor()
 
     # Get article by id
-    result = cur.execute("SELECT * FROM articles WHERE id = %s", [id])
+    result = cur.execute("SELECT * FROM articles WHERE id = {}".format(id))
 
     article = cur.fetchone()
     cur.close()
@@ -341,7 +340,7 @@ def edit_article(id):
         cur = mysql.connection.cursor()
         app.logger.info(title)
         # Execute
-        cur.execute ("UPDATE articles SET title=%s, body=%s WHERE id=%s",(title, body, id))
+        cur.execute ("UPDATE articles SET title='{}', body='{}' WHERE id={}".format(title, body, id))
         # Commit to DB
         mysql.connection.commit()
 
@@ -362,7 +361,7 @@ def delete_article(id):
     cur = mysql.connection.cursor()
 
     # Execute
-    cur.execute("DELETE FROM articles WHERE id = %s", [id])
+    cur.execute("DELETE FROM articles WHERE id = {}".format(id))
 
     # Commit to DB
     mysql.connection.commit()
@@ -642,7 +641,6 @@ def slack_alerter(msg, webhook_url, usr):
 
 def logfile_alerter(msg, conf, usr):
     """Log alerts to file"""
-    # logger.info(session['username'])
     config = load_config()
     logPath = config['alert']['logfile']['path']
     logFile = config['alert']['logfile']['fname']
@@ -742,8 +740,6 @@ def honeyDeploy():
                         if passwd not in tokenPassw:
                             tokenPassw.append(passwd)
 
-        logger.info(tokenUsers)
-
         tokenUser = secrets.choice(tokenUsers)
         plainPass = secrets.choice(tokenPassw)
         encPass = sha256_crypt.encrypt(str(plainPass))
@@ -763,7 +759,7 @@ def honeyDeploy():
                     cur.execute("DELETE FROM users where username like 'dev%'")
                     mysql.connection.commit()
 
-                    cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
+                    cur.execute("INSERT INTO users(username, password) VALUES ('{}', '{}')".format(tokenUser, encPass))
                     mysql.connection.commit()
                     cur.close()
 
@@ -786,7 +782,7 @@ def honeyDeploy():
                     cur.execute("DELETE FROM users WHERE username LIKE 'dev%'")
                     mysql.connection.commit()
 
-                    cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (tokenUser, encPass))
+                    cur.execute("INSERT INTO users(username, password) VALUES ('{}', '{}')".format(tokenUser, encPass))
                     mysql.connection.commit()
                     cur.close()
 
@@ -904,7 +900,7 @@ def delete_stat(ip):
         # Try to delete value from MySQL
         try:
             cur = mysql.connection.cursor()
-            cur.execute("DELETE FROM stats WHERE ip_addr = %s", [ip])
+            cur.execute("DELETE FROM stats WHERE ip_addr = '{}'".format(ip))
 
             mysql.connection.commit()
             cur.close()
@@ -971,11 +967,23 @@ def threats():
 
 def secretKey():
     """Secret token generated to avoid hard coded secret key"""
-
     key = secrets.token_hex(16)
     return key
 
+@app.before_request
+def csrf_protect():
+	if request.method == "POST":
+		token = session.pop('_csrf_token', None)
+		if not token or token != request.form.get('_csrf_token'):
+			abort(403)
+
+def generate_csrf_token():
+	if '_csrf_token' not in session:
+		session['_csrf_token'] = secretKey()
+	return session['_csrf_token']
+
+
 if __name__ == '__main__':
+    app.jinja_env.globals['csrf_token'] = generate_csrf_token
     app.secret_key=secretKey()
-    # app.run(debug=True, use_reloader=True)
     app.run(host='0.0.0.0', port=3000, debug=True, use_reloader=True)

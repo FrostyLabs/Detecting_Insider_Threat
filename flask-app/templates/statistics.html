@@ -1,7 +1,7 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-  <h1>Statistics</h1>
+  <h1>Statistics Overview</h1>
   <table class="table table-striped">
     <tr>
       <th>IP address</th>
@@ -23,6 +23,7 @@
         <!-- <td><a href="#" class="btn btn-default pull-right">Details</a></td> -->
         <td>
           <form action="{{url_for('delete_stat', ip=stat.ip_addr)}}" method="post">
+            <input name="_csrf_token" type="hidden" value="{{  csrf_token()  }}">
             <input type="hidden" name="_method" value="DELETE">
             <input type="submit" value="Delete" class="btn btn-danger">
           </form></td>

@@ -2,9 +2,10 @@
 
 {% block body %}
   <h1>Login</h1>
-  <!-- Development Account // Username: dev.bobbye // Password: F3Yndg -->
+  <!-- Development Account // Username: dev.faith // Password: 6xSfSe -->
 
   <form action="" method="POST">
+    <input name="_csrf_token" type="hidden" value="{{  csrf_token()  }}">
     <div class="form-group">
       <label>Username</label>
       <input type="text" name="username" class="form-control" value={{request.form.username}}>
