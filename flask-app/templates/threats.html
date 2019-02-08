@@ -2,57 +2,62 @@
 
 {% block body %}
   <h1>Threats</h1>
+  <div class="col-sm-7">
+    <h4>High</h4>
+    <table class="table table-striped">
+      <tr>
+        <th>IP Address</th>
+        <th>Count</th>
+      </tr>
+      {% for stat in stats %}
+        {% if stat.total >=6%}
+          <tr>
+            <td>{{stat.ip_addr}}</td>
+            <td>{{stat.total}}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
 
-  <h4>High</h4>
-  <table class="table table-striped">
-    <tr>
-      <th>IP Address</th>
-      <th>Count</th>
-    </tr>
-    {% for stat in stats %}
-      {% if stat.total >=6%}
-        <tr>
-          <td>{{stat.ip_addr}}</td>
-          <td>{{stat.total}}</td>
-        </tr>
-      {% endif %}
-    {% endfor %}
-  </table>
+    <hr>
 
-  <hr>
+    <h4>Medium</h4>
+    <table class="table table-striped">
+      <tr>
+        <th>IP Address</th>
+        <th>Count</th>
+      </tr>
+      {% for stat in stats %}
+        {% if 3<= stat.total <=5%}
+          <tr>
+            <td>{{stat.ip_addr}}</td>
+            <td>{{stat.total}}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
 
-  <h4>Medium</h4>
-  <table class="table table-striped">
-    <tr>
-      <th>IP Address</th>
-      <th>Count</th>
-    </tr>
-    {% for stat in stats %}
-      {% if 3<= stat.total <=5%}
-        <tr>
-          <td>{{stat.ip_addr}}</td>
-          <td>{{stat.total}}</td>
-        </tr>
-      {% endif %}
-    {% endfor %}
-  </table>
+    <hr>
 
-  <hr>
+    <h4>Low</h4>
+    <table class="table table-striped">
+      <tr>
+        <th>IP Address</th>
+        <th>Count</th>
+      </tr>
+      {% for stat in stats %}
+        {% if stat.total <= 2 %}
+          <tr>
+            <td>{{stat.ip_addr}}</td>
+            <td>{{stat.total}}</td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
+  </div>
+  <div class="col-sm-5">
+    <h4>Visual Overview</h4>
+    <img src="https://i.imgur.com/vnwmBIh.png" alt="Pie Chart" width="100%">
 
-  <h4>Low</h4>
-  <table class="table table-striped">
-    <tr>
-      <th>IP Address</th>
-      <th>Count</th>
-    </tr>
-    {% for stat in stats %}
-      {% if stat.total <= 2 %}
-        <tr>
-          <td>{{stat.ip_addr}}</td>
-          <td>{{stat.total}}</td>
-        </tr>
-      {% endif %}
-    {% endfor %}
-  </table>
-
+  </div>
 {% endblock %}
