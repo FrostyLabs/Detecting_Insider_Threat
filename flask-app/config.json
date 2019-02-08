@@ -3,7 +3,7 @@
 		"content-type": "text/html",
 		"body": "default.html"
 	},
-	"traps": {
+	"tokens": {
 		"usernames": {
 			"1": "dev.cordelia",
 			"2": "dev.patience",
@@ -15,18 +15,6 @@
 			"8": "dev.bobbye",
 			"9": "dev.constance",
 			"10": "dev.faith"
-		},
-		"passwords": {
-			"1": "am7Bdq",
-			"2": "F3Yndg",
-			"3": "w4fPND",
-			"4": "6f7BqP",
-			"5": "Abu7WV",
-			"6": "f7Ct9b",
-			"7": "QXq3hF",
-			"8": "6xSfSe",
-			"9": "hEyD99",
-			"10": "Ng5LRC"
 		}
 	},
 	"alert": {
@@ -37,7 +25,7 @@
 		"email": {
 			"enabled": "false",
 			"to_email": "",
-			"smtp_server": "smtp.gmail.com",
+			"smtp_server": "",
 			"smtp_port": 587,
 			"smtp_user": "",
 			"smtp_password": ""
@@ -46,14 +34,13 @@
 			"enabled": "false",
 			"sid": "",
 			"auth_token": "",
-			"message": {
-				"body": "Someone has accessed your honeytoken",
+			"numbers": {
 				"from": "",
 				"to": ""
 			}
 		},
 		"logfile":{
-			"enabled": "false",
+			"enabled": "true",
 			"path": "docs/logs/",
 			"fname": "logfile.json"
 		}
