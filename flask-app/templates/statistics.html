@@ -4,7 +4,7 @@
   <h1>Statistics Overview</h1>
   <table class="table table-striped">
     <tr>
-      <th>IP address</th>
+      <th>Physical Address</th>
       <th>Two Weeks</th>
       <th>One Week</th>
       <th>Three Days</th>
@@ -14,7 +14,7 @@
     </tr>
     {% for stat in stats %}
       <tr>
-        <td>{{stat.ip_addr}}</td>
+        <td>{{stat.mac_addr}}</td>
         <td>{{stat.two_weeks}}</td>
         <td>{{stat.one_week}}</td>
         <td>{{stat.three_days}}</td>
@@ -22,7 +22,7 @@
         <!-- # TODO: Honey token details -->
         <!-- <td><a href="#" class="btn btn-default pull-right">Details</a></td> -->
         <td>
-          <form action="{{url_for('delete_stat', ip=stat.ip_addr)}}" method="post">
+          <form action="{{url_for('delete_stat', mac=stat.mac_addr)}}" method="post">
             <input name="_csrf_token" type="hidden" value="{{  csrf_token()  }}">
             <input type="hidden" name="_method" value="DELETE">
             <input type="submit" value="Delete" class="btn btn-danger">
