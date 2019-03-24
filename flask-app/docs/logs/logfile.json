@@ -1,56 +1,82 @@
 {
-  "Honey token triggered - Fri, 25 Jan 2019 11:33:28 GMT": {
-    "Current Deployed Token": "dev.bobbye",
-    "src-ip": "192.168.217.132",
-    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
-    "Path": "/dashboard?",
-    "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 16 Jan 2019 11:33:28 GMT",
-    "User": "dev.bobbye"
-  },
-  "Honey token triggered - Fri, 25 Jan 2019 11:57:22 GMT": {
+  "Honey token triggered - Sun, 24 Mar 2019 01:05:07 GMT": {
     "Current Deployed Token": "dev.valentin",
-    "src-ip": "192.168.217.133",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
     "Path": "/dashboard?",
     "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 15 Jan 2019 11:57:22 GMT",
+    "Time": "Sun, 24 Mar 2019 01:05:07 GMT",
     "User": "dev.valentin"
   },
-  "Honey token triggered - Fri, 25 Jan 2019 12:33:17 GMT": {
-    "Current Deployed Token": "dev.constance",
-    "src-ip": "192.168.217.131",
+  "Honey token triggered - Sun, 24 Mar 2019 01:05:52 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
     "Path": "/dashboard?",
     "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 25 Jan 2019 12:33:17 GMT",
-    "User": "dev.constance"
+    "Time": "Sun, 24 Mar 2019 01:05:52 GMT",
+    "User": "dev.valentin"
   },
-  "Honey token triggered - Fri, 25 Jan 2019 12:37:10 GMT": {
-    "Current Deployed Token": "dev.jolene",
-    "src-ip": "192.168.217.131",
+  "Honey token triggered - Sun, 24 Mar 2019 01:06:11 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
     "Path": "/dashboard?",
     "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 25 Jan 2019 12:37:10 GMT",
-    "User": "dev.jolene"
+    "Time": "Sun, 24 Mar 2019 01:06:11 GMT",
+    "User": "dev.valentin"
   },
-  "Honey token triggered - Fri, 25 Jan 2019 17:42:53 GMT": {
-    "Current Deployed Token": "dev.jolene",
-    "src-ip": "192.168.217.131",
+  "Honey token triggered - Sun, 24 Mar 2019 01:06:19 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
     "Path": "/dashboard?",
     "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 25 Jan 2019 17:42:53 GMT",
-    "User": "dev.jolene"
+    "Time": "Sun, 24 Mar 2019 01:06:19 GMT",
+    "User": "dev.valentin"
   },
-  "Honey token triggered - Fri, 25 Jan 2019 17:43:01 GMT": {
-    "Current Deployed Token": "dev.jolene",
-    "src-ip": "192.168.217.131",
+  "Honey token triggered - Sun, 24 Mar 2019 01:06:26 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
     "Path": "/dashboard?",
     "Host": "http://192.168.217.140:3000/",
-    "Time": "Fri, 25 Jan 2019 17:43:01 GMT",
-    "User": "dev.jolene"
+    "Time": "Sun, 24 Mar 2019 01:06:26 GMT",
+    "User": "dev.valentin"
+  },
+  "Honey token triggered - Sun, 24 Mar 2019 01:06:55 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.142",
+    "mac-addr": "00:0c:29:76:96:d6",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0",
+    "Path": "/dashboard?",
+    "Host": "http://192.168.217.140:3000/",
+    "Time": "Sun, 24 Mar 2019 01:06:55 GMT",
+    "User": "dev.valentin"
+  },
+  "Honey token triggered - Sun, 24 Mar 2019 01:07:02 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.142",
+    "mac-addr": "00:0c:29:76:96:d6",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0",
+    "Path": "/dashboard?",
+    "Host": "http://192.168.217.140:3000/",
+    "Time": "Sun, 24 Mar 2019 01:07:02 GMT",
+    "User": "dev.valentin"
+  },
+  "Honey token triggered - Sun, 24 Mar 2019 01:22:18 GMT": {
+    "Current Deployed Token": "dev.valentin",
+    "src-ip": "192.168.217.147",
+    "mac-addr": "00:0c:29:bd:c1:63",
+    "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:59.0) Gecko/20100101 Firefox/59.0",
+    "Path": "/dashboard?",
+    "Host": "http://192.168.217.140:3000/",
+    "Time": "Sun, 24 Mar 2019 01:22:18 GMT",
+    "User": "dev.valentin"
   }
 }
