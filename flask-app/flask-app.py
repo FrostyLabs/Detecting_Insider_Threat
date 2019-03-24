@@ -38,6 +38,7 @@ from passlib.hash import sha256_crypt
 from functools import wraps
 import secrets
 import re
+from scapy.all import srp,Ether,ARP,conf
 
 app = Flask(__name__)
 
@@ -65,6 +66,7 @@ out_hdlr.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
 out_hdlr.setLevel(logging.INFO)
 logger.addHandler(out_hdlr)
 logger.setLevel(logging.INFO)
+
 
 
 
@@ -483,7 +485,8 @@ def email_alerter(msg, conf, usr):
     now = time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
     body = ("Honeytoken triggered!\n\n"
             "Time: {}\n"
-            "Source IP: {}\n"
+            "Current IP: {}\n"
+            "MAC Address: {}\n"
             #"Threat Intel Report: {}\n"
             "User-Agent: {}\n"
             "Path: {}\n"
@@ -491,6 +494,7 @@ def email_alerter(msg, conf, usr):
             "Username: {}\n").format(
         now,
         msg['source-ip'],
+        arp_scan(msg['source-ip']),
         #msg['threat-intel'] if msg['threat-intel'] else "None",
         msg['user-agent'],
         msg['path'],
@@ -529,7 +533,8 @@ def sms_alerter(msg, conf, usr):
                     .create(
                         body=("Honeytoken triggered!\n\n"
                                 "Time: {}\n\n"
-                                "Source IP: {}\n\n"
+                                "Current IP: {}\n\n"
+                                "Source MAC: {}\n\n"
                                 #"Threat Intel Report: {}\n"
                                 "User-Agent: {}\n\n"
                                 "Path: {}\n\n"
@@ -537,6 +542,7 @@ def sms_alerter(msg, conf, usr):
                                 "Username: {}\n\n").format(
                             now,
                             msg['source-ip'],
+                            arp_scan(msg['source-ip']),
                             #msg['threat-intel'] if msg['threat-intel'] else "None",
                             msg['user-agent'],
                             msg['path'],
@@ -573,8 +579,13 @@ def slack_alerter(msg, webhook_url, usr):
                         "short": "true"
                     },
                     {
-                        "title": "Source IP Address",
+                        "title": "Current IP Address",
                         "value": msg['source-ip'],
+                        "short": "true"
+                    },
+                    {
+                        "title": "Physical MAC address",
+                        "value": arp_scan(msg['source-ip']),
                         "short": "true"
                     },
                     #{
@@ -652,7 +663,7 @@ def logfile_alerter(msg, conf, usr):
         cur = mysql.connection.cursor()
 
         # Get tokens
-        tokenSearch = "SELECT username FROM users WHERE username LIKE 'dev%'"
+        tokenSearch = "SELECT username FROM users WHERE username LIKE 'dev.%'"
         tokens = cur.execute(tokenSearch)
 
         deployedToken = cur.fetchall()
@@ -676,6 +687,7 @@ def logfile_alerter(msg, conf, usr):
             newLog = {"Honey token triggered - "+now: {
                                          "Current Deployed Token": deployedTokenValue,
                                          "src-ip": msg['source-ip'],
+                                         "mac-addr": arp_scan(msg['source-ip']),
                                          "User-Agent": msg['user-agent'],
                                          "Path": msg['path'],
                                          "Host": msg['host'],
@@ -702,6 +714,7 @@ def logfile_alerter(msg, conf, usr):
         newLog = {"Honey token triggered - "+now: {
                                      "Current Deployed Token": deployedTokenValue,
                                      "src-ip": msg['source-ip'],
+                                     "mac-addr": arp_scan(msg['source-ip']),
                                      "User-Agent": msg['user-agent'],
                                      "Path": msg['path'],
                                      "Host": msg['host'],
@@ -828,30 +841,32 @@ def generate_password():
 
 def analyze_logfile():
     config = load_config()
-
     logFile = config['alert']['logfile']['path'] + config['alert']['logfile']['fname']
-
     with open(logFile) as f:
         lFile = json.load(f)
 
     numberDict = {}
-
     for key, value in lFile.items():
-        if value["src-ip"] not in numberDict:
-            numberDict[value["src-ip"]] = []
+        if value["mac-addr"] not in numberDict:
+            numberDict[value["mac-addr"]] = []
         time = value["Time"]
         cutTime = time[:-4]
         convTime = datetime.datetime.strptime(cutTime, "%a, %d %b %Y %H:%M:%S")
         now = datetime.datetime.now()
         since = now - convTime
-        numberDict[value["src-ip"]].append(since)
+        numberDict[value["mac-addr"]].append(since)
 
-    for IP, value in numberDict.items():
+    pprint.pprint(numberDict)
+
+    for mac, value in numberDict.items():
         ftCount = 0
         sCount = 0
         tCount = 0
+        totalCount = 0
         # print("Tokens logged by {}:".format(IP))
         for item in value:
+            if item.days > 14:
+                totalCount += 1
             if 8 <= item.days <= 14:
                 ftCount += 1
             if 4 <= item.days <= 7:
@@ -859,16 +874,12 @@ def analyze_logfile():
             if item.days <= 3:
                 tCount += 1
 
-        # print("{} has logged {} tokens in the past 14 days".format(IP, ftCount))
-        # print("{} has logged {} tokens in the past  7 days".format(IP, sCount))
-        # print("{} has logged {} tokens in the past  3 days\n".format(IP, tCount))
-
         try:
             cur = mysql.connection.cursor()
-            cur.execute("DELETE FROM stats WHERE ip_addr = '{}'".format(IP))
+            cur.execute("DELETE FROM macStats WHERE mac_addr = '{}'".format(mac))
             totalCount = ftCount+sCount+tCount
             # print("Total: {}".format(ftCount+sCount+tCount))
-            cur.execute("INSERT INTO stats(ip_addr, two_weeks, one_week, three_days, total) VALUES('{}', {}, {}, {}, {})".format(IP, ftCount, sCount, tCount, totalCount))
+            cur.execute("INSERT INTO macStats(mac_addr, two_weeks, one_week, three_days, total) VALUES('{}', {}, {}, {}, {})".format(mac, ftCount, sCount, tCount, totalCount))
             mysql.connection.commit()
             cur.close()
         except Exception as err:
@@ -882,15 +893,15 @@ def analyze_logfile():
 @is_logged_in
 def stats_page():
     currentUser =  [session['username']]
-    analyze_logfile()
 
     if currentUser[0] == 'admin':
+        analyze_logfile()
         try:
             # Create cursor
             cur = mysql.connection.cursor()
 
             # Get stats
-            result = cur.execute("SELECT * FROM stats")
+            result = cur.execute("SELECT * FROM macStats")
 
             stats = cur.fetchall()
 
@@ -905,21 +916,21 @@ def stats_page():
         flash('Unauthorized, Please login', 'danger')
         return redirect(url_for('login'))
 
-@app.route('/delete_stat/<string:ip>', methods=['POST'])
+@app.route('/delete_stat/<string:mac>', methods=['POST'])
 @is_logged_in
-def delete_stat(ip):
+def delete_stat(mac):
     currentUser = [session['username']]
 
     if currentUser[0] == 'admin':
         # Try to delete value from MySQL
         try:
             cur = mysql.connection.cursor()
-            cur.execute("DELETE FROM stats WHERE ip_addr = '{}'".format(ip))
+            cur.execute("DELETE FROM macStats WHERE mac_addr = '{}'".format(mac))
 
             mysql.connection.commit()
             cur.close()
 
-            logger.info('Stat {} deleted from database'.format(ip))
+            logger.info('Stat {} deleted from database'.format(mac))
 
         except Exception as err:
             logger.info(err)
@@ -934,19 +945,19 @@ def delete_stat(ip):
             with open(logFile) as f:
                 lFile = json.load(f)
 
-            json_after_deleting = {k: v for k, v in lFile.items() if v['src-ip'] != ip}
+            json_after_deleting = {k: v for k, v in lFile.items() if v['mac-addr'] != mac}
 
             with open(logFile, 'w') as f:
                 json.dump(json_after_deleting, f, indent=2)
 
-            logger.info('Stat {} deleted from {}'.format(ip, logFile))
+            logger.info('Stat {} deleted from {}'.format(mac, logFile))
 
         except Exception as err:
             logger.info(err)
             flash('Problems deleting records from logfile.json', 'danger')
             return redirect(url_for('dashboard'))
 
-        flash('Successfully deleted statistics for IP: {}'.format(ip), 'success')
+        flash('Successfully deleted statistics for MAC: {}'.format(mac), 'success')
 
         return redirect('/statistics')
 
@@ -965,7 +976,7 @@ def threats():
         try:
             cur = mysql.connection.cursor()
 
-            result = cur.execute("SELECT ip_addr, total FROM stats")
+            result = cur.execute("SELECT mac_addr, total FROM macStats")
 
             statValues = cur.fetchall()
             cur.close()
@@ -983,6 +994,21 @@ def secretKey():
     """Secret token generated to avoid hard coded secret key"""
     key = secrets.token_hex(16)
     return key
+
+def arp_scan(ip):
+    config = load_config()
+
+    interface = config['arpConfig']['interface']
+    conf.verb = 0
+    ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst = ip),
+                 timeout = 2,
+                 iface = interface,
+                 inter = 0.1)
+
+    for snd, rcv in ans:
+        mac_addr = rcv.sprintf(r"%Ether.src%")
+
+    return mac_addr
 
 @app.before_request
 def csrf_protect():
