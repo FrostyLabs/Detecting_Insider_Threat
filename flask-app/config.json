@@ -49,5 +49,8 @@
 		"enabled": "false",
 		"cymon2-user": "",
 		"cymon2-pass": ""
+	},
+	"arpConfig" : {
+		"interface": "YOUR NETWORK INTERFACE HERE"
 	}
 }
