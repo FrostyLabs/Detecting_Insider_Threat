@@ -1,6 +1,6 @@
-DROP TABLE stats;
-CREATE TABLE stats(
-  ip_addr varchar(15) PRIMARY KEY NOT NULL,
+DROP TABLE macStats
+CREATE TABLE macStats(
+  mac_addr varchar(20) PRIMARY KEY NOT NULL,
   two_weeks int(3),
   one_week int(3),
   three_days int(3),
