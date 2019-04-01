@@ -1,0 +1,6 @@
+Flask==1.0.2
+twilio==6.26.0
+Flask-MySQLdb==0.2.0
+WTForms==2.2.1
+passlib==1.7.1
+scapy==2.4.2
