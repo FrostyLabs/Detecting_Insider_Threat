@@ -21,25 +21,19 @@
 # END
 
 from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, logging, send_from_directory, abort
-import logging
-import sys
-import os
-import json
-import datetime
-import time
-import urllib.request
-import urllib.error
-import smtplib
-import base64
-from twilio.rest import Client
 from flask_mysqldb import MySQL
+from twilio.rest import Client
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
-from functools import wraps
-import secrets
-import re
 from scapy.all import srp,Ether,ARP,conf
+from functools import wraps
 
+import logging
+import sys, os, json, re
+import datetime, time
+import urllib.request, urllib.error
+import smtplib
+import base64, secrets
 app = Flask(__name__)
 
 # Config MySQL
@@ -68,9 +62,6 @@ logger.addHandler(out_hdlr)
 logger.setLevel(logging.INFO)
 
 
-
-
-
 @app.route('/', defaults={'path': ''})
 def default(path):
     return render_template('default.html')
@@ -83,7 +74,6 @@ def favicon():
 def load_config():
     """ Load the configuration file """
     CONFIGFILE = os.environ.get('configFile')
-    # Load config from the local file
     with open('config.json') as config_file:
         conf = json.load(config_file)
 
@@ -97,8 +87,6 @@ def about():
 # 404 Error Page
 @app.errorhandler(404)
 def page_not_found(e):
-    # note that we set the 404 status explicitly
-    # http://flask.pocoo.org/docs/1.0/patterns/errorpages/
     return render_template('404.html'), 404
 
 # Articles
@@ -286,7 +274,6 @@ class ArticleForm(Form):
     title = StringField('Title', [validators.Length(min=1, max=200)])
     body = TextAreaField('Body', [validators.Length(min=30)])
 
-
 # Add Article
 @app.route('/add_article', methods=['GET', 'POST'])
 @is_logged_in
@@ -313,7 +300,6 @@ def add_article():
         return redirect(url_for('dashboard'))
 
     return render_template('add_article.html', form=form)
-
 
 # Edit Article
 @app.route('/edit_article/<string:id>', methods=['GET', 'POST'])
@@ -886,8 +872,6 @@ def analyze_logfile():
             print(err)
 
     logger.info('Stats records up to date')
-
-
 
 @app.route('/statistics')
 @is_logged_in
