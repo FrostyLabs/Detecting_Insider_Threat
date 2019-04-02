@@ -22,7 +22,7 @@ $ pip3 install -r requirements.txt
 #### Setup MySQL tables
 Database is stored in MySQL. 
 ```sh
-apt install mysql-server libmysqlclient-dev
+$ apt install mysql-server libmysqlclient-dev
 ```
 
 Create tables using the `sql_tables.sql` file, located in `/flask-app/`
