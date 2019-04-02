@@ -11,7 +11,7 @@ This project was inspired from Honeyku - https://github.com/0x4d31/honeyku
 
 Project developed in Python 3.6.7
 
-##### Install Python Dependencies
+#### Install Python Dependencies
 
 Using the `requirements.txt` file in `/flask-app/`
 
@@ -19,7 +19,7 @@ Using the `requirements.txt` file in `/flask-app/`
 $ pip3 install -r requirements.txt
 ```
 
-##### Setup MySQL tables
+#### Setup MySQL tables
 Database is stored in MySQL. 
 ```sh
 apt install mysql-server libmysqlclient-dev
@@ -44,7 +44,6 @@ $ cd flaskapp
 $ sudo python3 flaskapp.py
 ```
 
-##### Security
-
+### Security
 This app is not intended to be exposed on the internet.
 
